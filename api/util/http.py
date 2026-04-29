@@ -1,7 +1,7 @@
-from api.exceptions.http_base import BaseHTTPException, BadRequestException, AuthorizationNotFoundException
-from api.models.http import HTTPRange
-from api.util.functions import get_type_name, is_primitive
-from api.util.logger import log_exception
+from exceptions.http_base import BaseHTTPException, BadRequestException, AuthorizationNotFoundException
+from models.http import HTTPRange
+from util.functions import get_type_name, is_primitive
+from util.logger import log_exception
 
 from enum import Enum
 from inspect import signature

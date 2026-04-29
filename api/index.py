@@ -7,11 +7,11 @@ from setuptools.package_index import user_agent
 base_path = path.dirname(__file__)
 sys.path.append(path.realpath(base_path))
 
-from api.exceptions.http_base import \
+from exceptions.http_base import \
   BadRequestException, \
   MethodNotAllowedException
-from api.util.logger import get_logger
-from api.util.http import \
+from util.logger import get_logger
+from util.http import \
   HTTPStatusCodes, \
   HTTPRequestMethods, \
   HTTPRequestMethods_by_name, \
@@ -21,11 +21,11 @@ from api.util.http import \
   build_http_response_from_exception, \
   default_text_HTTPMIMEType, \
   text_HTTPMIMETypes, HTTPMIMETypes
-from api.util.http_path import \
+from util.http_path import \
   get_and_validate_rel_path, \
   default_interface_dir, \
   path_tries
-from api.util.functions import get_type_name
+from util.functions import get_type_name
 
 from inspect import signature
 from types import GeneratorType

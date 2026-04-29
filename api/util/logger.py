@@ -1,4 +1,4 @@
-from api.util.functions import get_search_text_from_raw_text
+from util.functions import get_search_text_from_raw_text
 
 import datetime
 import os.path

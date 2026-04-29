@@ -1,11 +1,11 @@
-from api.exceptions.http_base import \
+from exceptions.http_base import \
   BadRequestException, \
   MethodNotAllowedException, \
   NotFoundException, \
   AmbiguousPathException, \
   InternalServerError
-from api.util.functions import get_type_name, hash_dict, hash_list_or_tuple
-from api.util.http import HTTPRequestMethods, FormParams, PathParam, HTTPMIMETypes
+from util.functions import get_type_name, hash_dict, hash_list_or_tuple
+from util.http import HTTPRequestMethods, FormParams, PathParam, HTTPMIMETypes
 
 import re
 
@@ -27,9 +27,7 @@ def path_param_bool_func(not_a_bool_yet: str) -> bool:
   raise ValueError('%s couldn\'t be converted to a bool.' % not_a_bool_yet)
 
 class AvailablePath:
-  def __init__(self, request_method:str = None, path:str = None,
-               query_params:(list, tuple) = None, path_params:(list, tuple) = None,
-               expected_body:str = None, description:str = None):
+  def __init__(self, request_method:str = None, path:str = None, query_params:(list, tuple) = None, path_params:(list, tuple) = None, expected_body:str = None, description:str = None):
     grievances = []
     
     if query_params is not None:
@@ -153,7 +151,7 @@ class PathNode:
         parent.add_child(self)
       return
     
-    index_path = ('api' + self.get_raw_path() + '/index.py').replace('/', '.')[:-3]
+    index_path = (self.get_raw_path()[1:] + '/index.py').replace('/', '.')[:-3]
     for request_method in HTTPRequestMethods:
       # this has to use a global variable because "exec" doesn't work on locals.  this seems very thread-unsafe.
       request_fn_name = str(request_method)

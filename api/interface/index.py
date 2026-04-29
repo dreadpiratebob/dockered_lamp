@@ -1,5 +1,4 @@
-from api.util.http import HTTPRequestMethods, HTTPStatusCodes, Response, HTTPMIMETypes
-
+from util.http import HTTPRequestMethods, HTTPStatusCodes, Response, HTTPMIMETypes
 
 class AvailablePaths:
   def __init__(self, paths:set):

@@ -1,6 +1,6 @@
 import pymysql
 
-from api.util.config import get_config_value
+from util.config import get_config_value
 
 from enum import Enum
 

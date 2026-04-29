@@ -1,5 +1,5 @@
-from api.util.functions import get_type_name
-from api.util.logger import get_logger
+from util.functions import get_type_name
+from util.logger import get_logger
 
 import os.path
 
