@@ -7,7 +7,7 @@ from setuptools.package_index import user_agent
 base_path = path.dirname(__file__)
 sys.path.append(path.realpath(base_path))
 
-from exceptions.http_base import \
+from api.exceptions.http_base import \
   BadRequestException, \
   MethodNotAllowedException
 from util.logger import get_logger
@@ -20,12 +20,12 @@ from util.http import \
   ResponseMessage, \
   build_http_response_from_exception, \
   default_text_HTTPMIMEType, \
-  text_HTTPMIMETypes, HTTPMIMETypes
-from util.http_path import \
+  text_HTTPMIMETypes, HTTPMIMETypes, MajorHTTPMIMETypes
+from api.util.http_path import \
   get_and_validate_rel_path, \
   default_interface_dir, \
   path_tries
-from util.functions import get_type_name
+from api.util.functions import get_type_name
 
 from inspect import signature
 from types import GeneratorType
@@ -129,7 +129,12 @@ def get_contents(environment, headers):
   accept = headers.get(HTTPHeaders.ACCEPT, None)
   content_type = None
   content_type_failure = False
-  if accept is None or accept == HTTPMIMETypes.STAR_STAR:
+  if rel_path_data is None:
+    if accept.major_type == MajorHTTPMIMETypes.APPLICATION or accept.major_type == MajorHTTPMIMETypes.TEXT:
+      content_type = accept
+    else:
+      content_type = HTTPMIMETypes.APPLICATION_YAML
+  elif accept is None or accept == HTTPMIMETypes.STAR_STAR:
     content_type = rel_path_data.path_node.get_request_method_default_content_type(request_method)
   elif accept in rel_path_data.path_node.get_request_method_allowed_content_types(request_method):
     content_type = accept
@@ -141,10 +146,10 @@ def get_contents(environment, headers):
     return Response(error_message, response_code, mime_type=content_type)
   
   if request_method == HTTPRequestMethods.OPTIONS:
-    return Response('', HTTPStatusCodes.HTTP200, headers=_cors_headers)
+    return Response('', HTTPStatusCodes.HTTP200, mime_type=content_type, headers=_cors_headers)
   
   if content_type_failure:
-    content = 'unsupported value for the Accept header; accepted values are: %s' % (', '.join(rel_path_data.path_node.get_request_method_allowed_content_types(request_method)), )
+    content = 'unsupported value for the Accept header; accepted values are: %s' % (', '.join([str(content_type) for content_type in rel_path_data.path_node.get_request_method_allowed_content_types(request_method)]), )
     return Response(content, HTTPStatusCodes.HTTP400, mime_type=content_type)
   
   rel_path = rel_path_data.path_node.get_pretty_path()[len(default_interface_dir)+1:]
@@ -152,31 +157,42 @@ def get_contents(environment, headers):
     rel_path = '/'
   
   exec_func = rel_path_data.path_node.get_request_method_func(request_method)
-  bad_method_exception = MethodNotAllowedException(str(request_method), rel_path)
+  method_is_good = True
   if exec_func is None:
-    raise bad_method_exception
+    method_is_good = False
   
   endpoint_sig = '%s %s' % (str(request_method).upper(), rel_path)
   try:
     sig = signature(exec_func)
     if len(sig.parameters) != 5:
       get_logger().warn('%s has the wrong number of parameters.' % (endpoint_sig, ))
-      raise bad_method_exception
+      method_is_good = False
   except TypeError:
     get_logger().warn('%s isn\'t callable.' % (endpoint_sig, ))
-    raise bad_method_exception
+    method_is_good = False
   
-  response = exec_func(preprocess_request(environment, None if body is None else body.decode()), headers, rel_path_data.path_parameters, query_params, body)
+  response = None
+  if method_is_good:
+    response:Response = exec_func(preprocess_request(environment, None if body is None else body.decode()), headers, rel_path_data.path_parameters, query_params, body)
+    
+    if request_method == HTTPRequestMethods.OPTIONS:
+      response.upsert_headers(_cors_headers)
+    
+  elif request_method == HTTPRequestMethods.OPTIONS:
+    response = Response('', HTTPStatusCodes.HTTP200, mime_type=content_type, headers=_cors_headers)
+  else:
+    raise MethodNotAllowedException(str(request_method), rel_path)
+  
   if response.get_mime_type() is None:
     response.set_mime_type(content_type)
   
   return response
 
 def preprocess_request(environment:dict, body:str):
+  environment['bearer_token'] = build_bearer_token_from_raw_string(environment.get('HTTP_AUTHORIZATION', None), throw_on_invalid_token=False)
+  if environment['bearer_token'] is not None:
+    environment['bearer_token'].matches = request_hash_matches(environment, body, environment['bearer_token'])
   environment['root_path_node'] = path_tries['interface']
-  
-  # put any generic request preprocessing (e.g. if you have your own way to parse an auth token) here,
-  # and store any results in the environment dict.
   
   return environment
 

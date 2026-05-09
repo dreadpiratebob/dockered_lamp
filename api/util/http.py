@@ -1,4 +1,4 @@
-from exceptions.http_base import BaseHTTPException, BadRequestException, AuthorizationNotFoundException
+from exceptions.http_base import BaseHTTPException, BadRequestException
 from models.http import HTTPRange
 from util.functions import get_type_name, is_primitive
 from util.logger import log_exception
@@ -8,6 +8,23 @@ from inspect import signature
 from types import FunctionType
 from urllib.parse import quote_plus
 
+class MajorHTTPMIMETypes(Enum):
+  APPLICATION = 'application'
+  AUDIO = 'audio'
+  STAR = '*'
+  TEXT = 'text'
+major_http_mime_types_by_name = {mime_type.value: mime_type for mime_type in MajorHTTPMIMETypes}
+
+class MinorHTTPMIMETypes(Enum):
+  FLAC = 'flac'
+  JSON = 'json'
+  MPEG = 'mpeg'
+  PLAIN = 'plain'
+  STAR = '*'
+  X_YAML = 'x-yaml'
+  XML = 'xml'
+  YAML = 'yaml'
+minor_http_mime_types_by_name = {mime_type.value: mime_type for mime_type in MinorHTTPMIMETypes}
 
 class HTTPMIMETypes(Enum):
   def __new__(self, *args, **kwds):
@@ -17,13 +34,17 @@ class HTTPMIMETypes(Enum):
     return obj
   
   def __init__(self, http_name, serializer_function_name, base_structure):
-    self.http_name = http_name
+    name_tokens = http_name.split('/')
+    self.major_type = major_http_mime_types_by_name[name_tokens[0]]
+    self.minor_type = minor_http_mime_types_by_name[name_tokens[1]]
+    
     self.serializer_function_name = serializer_function_name
     self.base_structure = base_structure
   
   def __eq__(self, other):
     return isinstance(other, HTTPMIMETypes) and \
-      self.http_name == other.http_name and \
+      self.major_type == other.major_type and \
+      self.minor_type == other.minor_type and \
       self.serializer_function_name == other.serializer_function_name and \
       self.base_structure == other.base_structure
   
@@ -31,21 +52,21 @@ class HTTPMIMETypes(Enum):
     return not self.__eq__(other)
   
   def __hash__(self):
-    return (((hash(self.http_name) * 397) ^ hash(self.serializer_function_name)) * 397) ^ hash(self.base_structure)
+    return ((((hash(self.major_type) * 397) ^ hash(self.minor_type) * 397) ^ hash(self.serializer_function_name)) * 397) ^ hash(self.base_structure)
   
   def __str__(self):
-    return self.http_name
+    return '%s/%s' % (self.major_type.value, self.minor_type.value)
   
   APPLICATION_JSON = 'application/json', 'to_json', '{"data": "%s"}'
   APPLICATION_X_YAML = 'application/x-yaml', 'to_yaml', 'data: %s'
   APPLICATION_XML = 'application/xml', 'to_xml', '<data>%s</data>'
   APPLICATION_YAML = 'application/yaml', 'to_yaml', 'data: %s'
-  MEDIA_MPEG = 'audio/mpeg', None, bytes()
   MEDIA_FLAC = 'audio/flac', None, bytes()
+  MEDIA_MPEG = 'audio/mpeg', None, bytes()
   STAR_STAR = '*/*', None, bytes()
   TEXT_PLAIN = 'text/plain', None, '%s'
 
-HTTPMIMETypes_by_name = {x.http_name: x for x in HTTPMIMETypes}
+HTTPMIMETypes_by_name = {str(x): x for x in HTTPMIMETypes}
 text_HTTPMIMETypes = \
 {
   HTTPMIMETypes.APPLICATION_JSON,
@@ -387,6 +408,20 @@ class Response:
   
   def get_headers(self):
     return self._headers
+  
+  def upsert_headers(self, headers:dict[str, str]) -> None:
+    if not isinstance(headers, dict):
+      raise TypeError('headers must be a dict[str, str].')
+    
+    if self._headers is None:
+      self._headers = dict()
+    
+    for key, value in headers.items():
+      if not isinstance(key, str) or not isinstance(value, str):
+        raise TypeError('headers must be a dict[str, str].')
+    
+    for key, value in headers.items():
+      self._headers[key] = value
   
   def get_content_length(self):
     return self._content_length
