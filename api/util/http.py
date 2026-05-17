@@ -6,7 +6,8 @@ from util.logger import log_exception
 from enum import Enum
 from inspect import signature
 from types import FunctionType
-from urllib.parse import quote_plus
+# from urllib.parse import quote_plus
+from urllib3.request import urlencode as quote_plus
 
 class MajorHTTPMIMETypes(Enum):
   APPLICATION = 'application'

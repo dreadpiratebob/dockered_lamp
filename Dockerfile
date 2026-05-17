@@ -1,22 +1,24 @@
-FROM ubuntu:22.04
+FROM debian:bullseye-slim
 
-RUN apt-get upgrade -y && \
-    apt-get install software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get install -y \
+LABEL image.author = "poseidon.guy@gmail.com"
+
+RUN apt update && \
+    apt install -y \
       apache2 \
       apache2-dev \
       apache2-utils \
-      python3.9
-
-RUN python -m ensurepip --upgrade && \
-    python -m pip install \
-      mod-wsgi \
-      pymysql \
-      urllib
+      python3.9 \
+      python3-pip \
+      libapache2-mod-wsgi-py3 && \
+      apt clean && \
+      apt autoremove
 
 RUN mkdir /web
 COPY api /web
+COPY requirements.txt /web
+
+RUN python3 -m pip install -r /web/requirements.txt
+
 WORKDIR /web/api
 
 CMD mod_wsgi-express start-server index.py \
