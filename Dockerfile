@@ -14,12 +14,18 @@ RUN apt update && \
       apt autoremove
 
 RUN mkdir /web
-COPY api /web
+RUN mkdir /web/api
+COPY api /web/api
 COPY requirements.txt /web
+
+WORKDIR /web/api
 
 RUN python3 -m pip install -r /web/requirements.txt
 
-WORKDIR /web/api
+RUN useradd -ms /bin/bash webrunner
+RUN chown webrunner .
+USER webrunner
+
 
 CMD mod_wsgi-express start-server index.py \
       --log-level debug --log-to-terminal --startup-log \
