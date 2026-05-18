@@ -1,11 +1,14 @@
 from util.functions import get_search_text_from_raw_text
 
+from os import environ
+
 import datetime
 import os.path
 
 from enum import Enum
 
-_log_dir = '/var/log/audioid/'
+_service_name = environ.get('SERVICE_NAME', 'service')
+_log_dir = '/var/log/%s/' % (_service_name, )
 
 class LogLevel(Enum):
   DEBUG = ('debug', 0)
@@ -33,6 +36,9 @@ class Logger:
     
     if log_dir[-1] != '/':
       log_dir += '/'
+    
+    if not os.path.isdir(log_dir):
+      os.makedirs(log_dir)
     
     self._log_level = log_level
     self._log_dir   = log_dir

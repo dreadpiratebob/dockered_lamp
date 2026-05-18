@@ -18,14 +18,16 @@ RUN mkdir /web/api
 COPY api /web/api
 COPY requirements.txt /web
 
+RUN mkdir /var/log/service
+
 WORKDIR /web/api
 
 RUN python3 -m pip install -r /web/requirements.txt
 
 RUN useradd -ms /bin/bash webrunner
 RUN chown webrunner .
+RUN chown webrunner /var/log/service
 USER webrunner
-
 
 CMD mod_wsgi-express start-server index.py \
       --log-level debug --log-to-terminal --startup-log \
