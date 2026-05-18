@@ -189,10 +189,6 @@ def get_contents(environment, headers):
   return response
 
 def preprocess_request(environment:dict, body:str):
-  environment['bearer_token'] = build_bearer_token_from_raw_string(environment.get('HTTP_AUTHORIZATION', None), throw_on_invalid_token=False)
-  if environment['bearer_token'] is not None:
-    environment['bearer_token'].matches = request_hash_matches(environment, body, environment['bearer_token'])
-  environment['root_path_node'] = path_tries['interface']
   
   return environment
 
