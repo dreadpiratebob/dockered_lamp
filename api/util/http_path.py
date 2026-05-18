@@ -4,8 +4,9 @@ from exceptions.http_base import \
   NotFoundException, \
   AmbiguousPathException, \
   InternalServerError
-from util.functions import get_type_name, hash_dict, hash_list_or_tuple
-from util.http import HTTPRequestMethods, FormParams, PathParam, HTTPMIMETypes
+from models.http import AvailablePath, HTTPMIMETypes
+from util.functions import hash_dict
+from util.http import HTTPRequestMethods
 
 import re
 
@@ -25,75 +26,6 @@ def path_param_bool_func(not_a_bool_yet: str) -> bool:
     return False
   
   raise ValueError('%s couldn\'t be converted to a bool.' % not_a_bool_yet)
-
-class AvailablePath:
-  def __init__(self, request_method:str = None, path:str = None, query_params:(list, tuple) = None, path_params:(list, tuple) = None, expected_body:str = None, description:str = None):
-    grievances = []
-    
-    if query_params is not None:
-      if not isinstance(query_params, (list, tuple)):
-        grievances.append('query_params must be a list or tuple of QueryParams.')
-      
-      for param in query_params:
-        if not isinstance(param, FormParams):
-          grievances.append('found a %s in the list of query_params, each of which must be a QueryParam.' % (get_type_name(param), ))
-    
-    if path_params is not None:
-      if not isinstance(query_params, (list, tuple)):
-        grievances.append('path_params must be a list or tuple of PathParams.')
-      
-      for param in path_params:
-        if not isinstance(param, PathParam):
-          grievances.append('found a %s in the list of path_params, each of which must be a PathParam.' % (get_type_name(param), ))
-    
-    # gonna trust that i'm the only one using this class and i'm gonna do it right.
-    self.request_method = None if request_method is None else request_method.upper()
-    self.path = path
-    self.query_params = [] if query_params is None else query_params
-    self.path_params = [] if path_params is None else path_params
-    self.expected_body = expected_body
-    self.description = description
-  
-  def __eq__(self, other):
-    if not isinstance(other, type(self)):
-      return False
-    
-    for key in other.__dict__:
-      if key not in self.__dict__:
-        return False
-    
-    for key in self.__dict__:
-      if not key in other.__dict__:
-        return False
-      
-      if self.__dict__[key] != other.__dict__[key]:
-        return False
-    
-    return True
-  
-  def __hash__(self):
-    result = 0
-    
-    for val in self.__dict__.values():
-      new_hash = 0
-      if isinstance(val, dict):
-        new_hash = hash_dict(val)
-      elif isinstance(val, list):
-        new_hash = hash_list_or_tuple(val)
-      else:
-        new_hash = hash(val)
-      
-      result = result * 397 ^ new_hash
-    
-    return result
-  
-  def __str__(self):
-    result = '%s %s' % (self.request_method, self.path)
-    
-    if len(self.description) > 0:
-      result = '%s\n%s' % (result, self.description)
-    
-    return result
 
 path_var_type_funcs = {'bool': path_param_bool_func, 'float': float, 'int': int, 'str': str}
 path_param_folder_name_re = re.compile('^__[a-zA-Z_][a-zA-Z0-9_]*__(bool|float|int|str)__$')
@@ -134,10 +66,7 @@ class PathNode:
     self._var_name = None
     self._var_type_name = None
     self._var_parse_func = None
-    self._request_method_funcs = {rm: None for rm in HTTPRequestMethods}
-    self._request_method_help = {rm: None for rm in HTTPRequestMethods}
-    self._request_method_allowed_accept_types = {rm: None for rm in HTTPRequestMethods}
-    self._request_method_default_content_type = {rm: None for rm in HTTPRequestMethods}
+    self._request_methods = {rm: None for rm in HTTPRequestMethods}
     
     if self._is_path_param:
       var_parts = self._folder_name.split('__')[1:-1]
@@ -172,85 +101,7 @@ class PathNode:
         'get_data()'
       exec(code)
       
-      self._request_method_funcs[request_method] = rm_data
-      
-      code = \
-        'def get_data():\n' + \
-        '  global rm_data\n' + \
-        '  try:\n' + \
-        '    from %s import %s_help as the_data\n' % (index_path, request_fn_name) + \
-        '  except ImportError as e:\n' \
-        '    if not str(e).startswith("cannot import name \'%s_help\' from \'%s\' "):\n' % (str(request_method), index_path) + \
-        '      print("error: %s" % (str(e), ))\n' \
-        '      raise e\n' \
-        '    \n' \
-        '    rm_data = None\n' \
-        '    return\n' \
-        '  rm_data = the_data\n' \
-        'get_data()'
-      exec(code)
-      
-      if rm_data is None or isinstance(rm_data, AvailablePath):
-        self._request_method_help[request_method] = rm_data
-      else:
-        raise TypeError('found a %s for %s %s allowed accept types.' % (get_type_name(rm_data), request_fn_name.upper(), full_start_path + folder_name))
-      
-      code = \
-        'def get_data():\n' + \
-        '  global rm_data\n' + \
-        '  try:\n' + \
-        '    from %s import %s_allowed_accept_types as the_data\n' % (index_path, request_fn_name) + \
-        '  except ImportError as e:\n' \
-        '    if not str(e).startswith("cannot import name \'%s_allowed_accept_types\' from \'%s\' "):\n' % (str(request_method), index_path) + \
-        '      print("error: %s" % (str(e), ))\n' \
-        '      raise e\n' \
-        '    \n' \
-        '    rm_data = None\n' \
-        '    return\n' \
-        '  rm_data = the_data\n' \
-        'get_data()'
-      exec(code)
-      
-      if rm_data is None or isinstance(rm_data, set):
-        self._request_method_allowed_accept_types[request_method] = rm_data
-      else:
-        raise TypeError('found a %s for %s %s allowed accept types.' % (get_type_name(rm_data), request_fn_name.upper(), full_start_path + folder_name))
-      
-      code = \
-        'def get_data():\n' + \
-        '  global rm_data\n' + \
-        '  try:\n' + \
-        '    from %s import %s_default_content_type as the_data\n' % (index_path, request_fn_name) + \
-        '  except ImportError as e:\n' \
-        '    if not str(e).startswith("cannot import name \'%s_default_content_type\' from \'%s\' "):\n' % (str(request_method), index_path) + \
-        '      print("error: %s" % (str(e), ))\n' \
-        '      raise e\n' \
-        '    \n' \
-        '    rm_data = None\n' \
-        '    return\n' \
-        '  rm_data = the_data\n' \
-        'get_data()'
-      exec(code)
-      
-      if rm_data is None or isinstance(rm_data, HTTPMIMETypes):
-        self._request_method_default_content_type[request_method] = rm_data
-      else:
-        raise TypeError('found a %s for %s %s default content type.' % (get_type_name(rm_data), request_fn_name.upper(), full_start_path + folder_name))
-      
-      if self._request_method_funcs[request_method] is not None:
-        missing_data = []
-        error = False
-        
-        if self._request_method_allowed_accept_types[request_method] is None:
-          error = True
-          missing_data.append('allowed accept types')
-        
-        if self._request_method_default_content_type[request_method] is None:
-          error = True
-          missing_data.append('default content type')
-        
-        if error:
-          raise ValueError('missing %s for %s %s' % (' and '.join(missing_data), request_fn_name.upper(), full_start_path + folder_name))
+      self._request_methods[request_method] = rm_data
     
     if parent is not None:
       parent.add_child(self)
@@ -262,8 +113,8 @@ class PathNode:
   
   def __getitem__(self, key:(str, HTTPRequestMethods)):
     if isinstance(key, HTTPRequestMethods):
-      if key in self._request_method_funcs:
-        return self._request_method_funcs[key], self._request_method_help.get(key, None)
+      if key in self._request_methods:
+        return self._request_methods[key], self._request_method_help.get(key, None)
       
       raise MethodNotAllowedException(str(key).upper(), self.get_pretty_path())
     
@@ -352,16 +203,36 @@ class PathNode:
     return result
   
   def get_request_method_func(self, request_method:HTTPRequestMethods) -> callable:
-    return self._request_method_funcs.get(request_method, None)
+    rm = self._request_methods.get(request_method, None)
+    
+    if rm is None:
+      return None
+    
+    return rm.func
   
   def get_request_method_help(self, request_method:HTTPRequestMethods) -> AvailablePath:
-    return self._request_method_help.get(request_method, None)
+    rm = self._request_methods.get(request_method, None)
+    
+    if rm is None:
+      return None
+    
+    return rm.help
   
   def get_request_method_allowed_content_types(self, request_method:HTTPRequestMethods) -> set:
-    return self._request_method_allowed_accept_types.get(request_method, None)
+    rm = self._request_methods.get(request_method, None)
+    
+    if rm is None:
+      return None
+    
+    return rm.allowed_content_types
   
   def get_request_method_default_content_type(self, request_method:HTTPRequestMethods) -> HTTPMIMETypes:
-    return self._request_method_default_content_type.get(request_method, None)
+    rm = self._request_methods.get(request_method, None)
+    
+    if rm is None:
+      return None
+    
+    return rm.default_content_type
   
   def is_path_param(self) -> bool:
     return self._is_path_param

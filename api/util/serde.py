@@ -1,5 +1,5 @@
 from exceptions.http_base import BadRequestException
-from util.http import HTTPMIMETypes
+from models.http import HTTPMIMETypes
 
 from json import loads as parse_json
 from json.decoder import JSONDecodeError

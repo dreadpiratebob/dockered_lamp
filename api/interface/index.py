@@ -1,4 +1,6 @@
-from util.http import HTTPRequestMethods, HTTPStatusCodes, Response, HTTPMIMETypes
+from util.http import HTTPRequestMethods, HTTPStatusCodes, Response
+from models.http import HTTPMIMETypes, EndpointData
+
 
 class AvailablePaths:
   def __init__(self, paths:set):
@@ -7,7 +9,7 @@ class AvailablePaths:
   def __str__(self):
     return str(self.paths)
 
-def get(environment:dict, headers:dict, path_params:dict, query_params:dict, body) -> Response:
+def _get(environment:dict, headers:dict, path_params:dict, query_params:dict, body) -> Response:
   paths = set()
   
   start_path = '/interface'
@@ -37,5 +39,10 @@ def get(environment:dict, headers:dict, path_params:dict, query_params:dict, bod
   
   return Response(AvailablePaths(paths), HTTPStatusCodes.HTTP200)
 
-get_allowed_accept_types = { HTTPMIMETypes.APPLICATION_JSON, HTTPMIMETypes.APPLICATION_XML, HTTPMIMETypes.APPLICATION_X_YAML, HTTPMIMETypes.APPLICATION_YAML }
-get_default_content_type = HTTPMIMETypes.APPLICATION_YAML
+get = EndpointData \
+(
+  _get,
+  None,
+  { HTTPMIMETypes.APPLICATION_JSON, HTTPMIMETypes.APPLICATION_XML, HTTPMIMETypes.APPLICATION_X_YAML, HTTPMIMETypes.APPLICATION_YAML },
+  HTTPMIMETypes.APPLICATION_YAML,
+)

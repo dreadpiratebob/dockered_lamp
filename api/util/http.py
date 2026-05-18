@@ -1,5 +1,5 @@
 from exceptions.http_base import BaseHTTPException, BadRequestException
-from models.http import HTTPRange
+from models.http import HTTPRange, HTTPMIMETypes
 from util.functions import get_type_name, is_primitive
 from util.logger import log_exception
 
@@ -7,64 +7,6 @@ from enum import Enum
 from inspect import signature
 from types import FunctionType
 from urllib.parse import quote_plus
-
-class MajorHTTPMIMETypes(Enum):
-  APPLICATION = 'application'
-  AUDIO = 'audio'
-  STAR = '*'
-  TEXT = 'text'
-major_http_mime_types_by_name = {mime_type.value: mime_type for mime_type in MajorHTTPMIMETypes}
-
-class MinorHTTPMIMETypes(Enum):
-  FLAC = 'flac'
-  JSON = 'json'
-  MPEG = 'mpeg'
-  PLAIN = 'plain'
-  STAR = '*'
-  X_YAML = 'x-yaml'
-  XML = 'xml'
-  YAML = 'yaml'
-minor_http_mime_types_by_name = {mime_type.value: mime_type for mime_type in MinorHTTPMIMETypes}
-
-class HTTPMIMETypes(Enum):
-  def __new__(self, *args, **kwds):
-    value = len(self.__members__) + 1
-    obj = object.__new__(self)
-    obj._value_ = value
-    return obj
-  
-  def __init__(self, http_name, serializer_function_name, base_structure):
-    name_tokens = http_name.split('/')
-    self.major_type = major_http_mime_types_by_name[name_tokens[0]]
-    self.minor_type = minor_http_mime_types_by_name[name_tokens[1]]
-    
-    self.serializer_function_name = serializer_function_name
-    self.base_structure = base_structure
-  
-  def __eq__(self, other):
-    return isinstance(other, HTTPMIMETypes) and \
-      self.major_type == other.major_type and \
-      self.minor_type == other.minor_type and \
-      self.serializer_function_name == other.serializer_function_name and \
-      self.base_structure == other.base_structure
-  
-  def __ne__(self, other):
-    return not self.__eq__(other)
-  
-  def __hash__(self):
-    return ((((hash(self.major_type) * 397) ^ hash(self.minor_type) * 397) ^ hash(self.serializer_function_name)) * 397) ^ hash(self.base_structure)
-  
-  def __str__(self):
-    return '%s/%s' % (self.major_type.value, self.minor_type.value)
-  
-  APPLICATION_JSON = 'application/json', 'to_json', '{"data": "%s"}'
-  APPLICATION_X_YAML = 'application/x-yaml', 'to_yaml', 'data: %s'
-  APPLICATION_XML = 'application/xml', 'to_xml', '<data>%s</data>'
-  APPLICATION_YAML = 'application/yaml', 'to_yaml', 'data: %s'
-  MEDIA_FLAC = 'audio/flac', None, bytes()
-  MEDIA_MPEG = 'audio/mpeg', None, bytes()
-  STAR_STAR = '*/*', None, bytes()
-  TEXT_PLAIN = 'text/plain', None, '%s'
 
 HTTPMIMETypes_by_name = {str(x): x for x in HTTPMIMETypes}
 text_HTTPMIMETypes = \
@@ -327,7 +269,7 @@ class HTTPRequestMethods(Enum):
 HTTPRequestMethods_by_name = {rm.name.lower(): rm for rm in HTTPRequestMethods} | {rm.name.upper(): rm for rm in HTTPRequestMethods}
 
 class Response:
-  def __init__(self, payload, status_code:HTTPStatusCodes, mime_type:HTTPMIMETypes = None, serialization_falls_back_to_fields:bool = True, use_public_fields_only:bool = True, use_base_field_in_xml = False, use_base_field_in_yaml:bool = False, data_is_raw:bool = False, content_length:int = None, headers:dict[str, str] = None):
+  def __init__(self, payload, status_code:HTTPStatusCodes, mime_type: HTTPMIMETypes = None, serialization_falls_back_to_fields:bool = True, use_public_fields_only:bool = True, use_base_field_in_xml = False, use_base_field_in_yaml:bool = False, data_is_raw:bool = False, content_length:int = None, headers:dict[str, str] = None):
     grievances = []
     
     if not isinstance(status_code, HTTPStatusCodes):
@@ -397,7 +339,7 @@ class Response:
   def get_mime_type(self):
     return self._mime_type
   
-  def set_mime_type(self, mime_type:HTTPMIMETypes):
+  def set_mime_type(self, mime_type: HTTPMIMETypes):
     if not isinstance(mime_type, HTTPMIMETypes):
       raise TypeError('a mime type must be an HTTPMIMEType.')
     
@@ -953,7 +895,7 @@ class ResponseMessage:
   def __str__(self):
     return str(self.message)
 
-def build_http_response_from_exception(exception:Exception, mime_type:HTTPMIMETypes = None):
+def build_http_response_from_exception(exception:Exception, mime_type: HTTPMIMETypes = None):
   grievances = []
   
   if not isinstance(exception, Exception):
@@ -970,64 +912,3 @@ def build_http_response_from_exception(exception:Exception, mime_type:HTTPMIMETy
     return Response(ResponseMessage("an internal error occurred."), HTTPStatusCodes.HTTP500, mime_type)
   
   return Response(ResponseMessage(exception.get_message()), HTTPStatusCodes_by_code[exception.get_status()], mime_type)
-
-class FormParams(Enum):
-  def __new__(self, *args, **kwds):
-    value = len(self.__members__) + 1
-    obj = object.__new__(self)
-    obj._value_ = value
-    return obj
-  
-  def __init__(self, param_name:str, required:bool, parse_func, public_param_type_name:str, exception_param_type_name:str, default_value, description:str):
-    self.param_name = param_name
-    self.is_required = required
-    self._parse_func = parse_func
-    self.param_type = public_param_type_name
-    self._exception_param_type_name = exception_param_type_name
-    self.default_value = default_value
-    self.description = description
-  
-  def __str__(self):
-    return self.param_name + ' (' + ('required' if self.is_required else 'optional') + '): ' + self.description
-  
-  def get_value(self, params:dict, return_error_message:bool = True):
-    return get_param(self.param_name, params, self._parse_func, self._exception_param_type_name, self.is_required, 'query',
-                     self.default_value, return_error_message)
-
-class PathParam(Enum):
-  def __new__(self, *args, **kwds):
-    value = len(self.__members__) + 1
-    obj = object.__new__(self)
-    obj._value_ = value
-    return obj
-  
-  def __init__(self, param_name:str, public_param_type_name:str, param_type_name_for_exceptions:str, description:str, parse_func):
-    self.param_name = param_name
-    self.param_type = public_param_type_name
-    self._param_type_name_for_exceptions = param_type_name_for_exceptions
-    self.description = description
-    self._parse_func = parse_func
-  
-  def __str__(self):
-    return self.param_name + ' (' + self.type_name + ')'
-  
-  def get_value(self, path_params:dict[str, str], return_error_message = True):
-    return get_param(self.param_name, path_params, self._parse_func, self._param_type_name_for_exceptions, True, 'path', None, return_error_message)
-
-def get_param(key:str, params:dict, parser, type_name:str, required:bool = False, param_type:str = 'query', default_value=None, return_error_message:bool = False):
-  if key not in params:
-    if required:
-      if return_error_message:
-        return default_value, BadRequestException('the %s parameter called "%s" is required and was missing.' % (param_type, key))
-      else:
-        raise BadRequestException('the %s parameter called "%s" is required and was missing.' % (param_type, key))
-    
-    return default_value, None
-  
-  try:
-    return parser(params[key]), None
-  except ValueError:
-    if return_error_message:
-      return default_value, BadRequestException('the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name))
-    else:
-      raise BadRequestException('the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name))

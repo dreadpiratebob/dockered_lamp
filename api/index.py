@@ -20,7 +20,8 @@ from util.http import \
   ResponseMessage, \
   build_http_response_from_exception, \
   default_text_HTTPMIMEType, \
-  text_HTTPMIMETypes, HTTPMIMETypes, MajorHTTPMIMETypes
+  text_HTTPMIMETypes
+from models.http import MajorHTTPMIMETypes, HTTPMIMETypes
 from util.http_path import \
   get_and_validate_rel_path, \
   default_interface_dir, \
@@ -189,7 +190,7 @@ def get_contents(environment, headers):
   return response
 
 def preprocess_request(environment:dict, body:str):
-  
+  environment['root_path_node'] = path_tries['interface']
   return environment
 
 def application(environment, start_response):
