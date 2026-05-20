@@ -1,22 +1,19 @@
-import pymysql
-
 from util.config import get_config_value
 
+import pymysql
 from enum import Enum
 
 host = get_config_value('db_host')
+port = 3306
 user_name = get_config_value('db_user')
 user_pw   = get_config_value('db_user_password')
-music_admin_name = get_config_value('db_music_admin')
-music_admin_pw   = get_config_value('db_music_admin_password')
 user_admin_name = get_config_value('db_user_admin')
 user_admin_pw   = get_config_value('db_user_admin_password')
 db_name = get_config_value('db_name')
 charset = get_config_value('db_charset')
 
 class MySQLUser(Enum):
-  USER = (user_name, user_pw)
-  MUSIC_ADMIN = (music_admin_name, music_admin_pw)
+  USER       = (user_name,       user_pw      )
   USER_ADMIN = (user_admin_name, user_admin_pw)
 
 class MySQLWrapper:
@@ -38,7 +35,7 @@ class MySQLWrapper:
     if host is None or name is None or pw is None or db_name is None or charset is None:
       raise ValueError('since some db connection info is missing, the user connection can\'t work.')
     
-    self._connection = pymysql.connect(host='localhost', user=name, password=pw, db='audioid', charset=charset, cursorclass=pymysql.cursors.DictCursor)
+    self._connection = pymysql.connect(host=host, port=port, user=name, password=pw, db=db_name, charset=charset, cursorclass=pymysql.cursors.DictCursor)
     self._cursor = self._connection.cursor()
     self._commit_on_close = commit_on_close
   

@@ -1,0 +1,33 @@
+from exceptions.http_base import BadRequestException
+from logic.mysql_messages import get_messages
+from models.db import MySQLMessage
+from models.http import AvailablePath, EndpointData, HTTPMIMETypes
+from util.http import Response, HTTPStatusCodes
+from util.interface.mysql_messages import MySQLMessageQueryParams
+
+class Messages:
+  def __init__(self, messages:list[MySQLMessage]):
+    self.messages = messages
+
+def _get(environment:dict, headers:dict, path_params:dict, query_params:dict, body) -> Response:
+  content_filter, content_filter_error = MySQLMessageQueryParams.CONTENT_FILTER.get_value(query_params)
+  if content_filter_error is not None:
+    raise BadRequestException(content_filter_error)
+  
+  messages = get_messages(None, content_filter)
+  
+  status_code = HTTPStatusCodes.HTTP200
+  if len(messages) == 0:
+    status_code = HTTPStatusCodes.HTTP204
+  
+  response_body = Messages(messages)
+  
+  return Response(response_body, status_code)
+
+get = EndpointData \
+(
+  _get,
+  AvailablePath(query_params = (MySQLMessageQueryParams.CONTENT_FILTER, ), description = ''),
+  {HTTPMIMETypes.APPLICATION_JSON, HTTPMIMETypes.APPLICATION_XML, HTTPMIMETypes.APPLICATION_X_YAML, HTTPMIMETypes.APPLICATION_YAML},
+  HTTPMIMETypes.APPLICATION_YAML
+)
