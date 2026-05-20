@@ -4,7 +4,7 @@ import pymysql
 from enum import Enum
 
 host = get_config_value('db_host')
-port = 3306
+port = get_config_value('db_port')
 user_name = get_config_value('db_user')
 user_pw   = get_config_value('db_user_password')
 user_admin_name = get_config_value('db_user_admin')
