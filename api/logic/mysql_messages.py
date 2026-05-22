@@ -1,4 +1,4 @@
-from dao.db import get_messages
+from dao.db import get_messages, save_message as save_message_to_db
 from models.db import MySQLMessage
 
 def get_mysql_message(message_id:int) -> MySQLMessage:
@@ -16,3 +16,9 @@ def get_mysql_message(message_id:int) -> MySQLMessage:
 
 def get_mysql_messages(content_filter:str) -> list[MySQLMessage]:
   return get_messages(message_id=None, message_content=content_filter)
+
+def save_message(content:str) -> MySQLMessage:
+  if not isinstance(content, str):
+    raise TypeError('message content must be a string.')
+  
+  return save_message_to_db(content)

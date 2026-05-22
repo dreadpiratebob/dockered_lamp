@@ -1,4 +1,4 @@
-from dao.mysql_utils import get_cursor
+from dao.mysql_utils import get_cursor, MySQLUser
 from models.db import MySQLMessage
 from util.functions import get_type_name
 
@@ -42,3 +42,18 @@ def get_messages(message_id:int = None, message_content:str = None) -> list[MySQ
       result.append(MySQLMessage(db_result['id'], db_result['content']))
   
   return result
+
+def save_message(content:str) -> MySQLMessage:
+  if not isinstance(content, str):
+    raise TypeError('message content must be a string.')
+  
+  query = 'INSERT INTO mysql_messages (content) VALUES (%s)'
+  args = (content, )
+  
+  message_id = None
+  with get_cursor(MySQLUser.USER_ADMIN) as cursor:
+    cursor.get_cursor().execute(query, args)
+    
+    message_id = cursor.get_cursor().lastrowid
+  
+  return MySQLMessage(message_id, content)
