@@ -20,12 +20,21 @@ the `-it` option in the run command will pipe the api's stdout to the stdout of 
 if your host box is running a unix system and you're disconnected from the container, you can watch api logs by opening a terminal on the host box (or in an ssh session that's connected to the host box) and running `docker exec $container_id /bin/bash -c 'tail -f /var/log/service/out.log'` (but you might have to replace "service" with the name of your service if you renamed that folder).  i've found this helpful when i'm debugging the python scripts.
 
 # connecting to MySQL
-this is never as simple as i want.  the `/mysql_messages` endpoint will throw errors until this is set up correctly (and that may be ok if you don't want to use MySQL).
+this is never as simple as i want.  the `/mysql_messages` endpoint will throw errors until this is set up correctly (and that may be ok if you don't want to use MySQL). for what it's worth, this is the version info i got from MySQL:
+```commandline
+# mysql --version
+mysql  Ver 15.1 Distrib 10.5.29-MariaDB, for debian-linux-gnu (x86_64) using  EditLine wrapper
+```
+
+## scope
+this only covers connecting an api running in a docker container to a MySQL daemon running outside the docker container; it doesn't cover things like recommended practices for things like multithreading and row locking.
+
+also, note that this repo assumes that the MySQL daemon will be running outside the docker container and could be accessible from multiple docker containers.
 
 ## configuring the MySQL server
 this is tangential to this repo, but i had to do some work on my MySQL server config to allow a docker image to connect to it.
-1. comment out the `bind_adress` config value so that it doesn't get set. (by default, this is set to `127.0.0.1`, which means that the MySQL server software will only accept connections from localhost on the loopback adapter, which isn't what we want here.)
-1. 
+1. comment out the line that sets the `bind-adress` config value to `127.0.0.1`.  (that means that the MySQL server software will only accept connections from localhost on the loopback adapter, which isn't what we want here.)
+1. uncomment the line that sets the `bind-address` config value to `0.0.0.0`. (that makes it so that the MySQL daemon will accept connections on any interface. in the default config when i installed MySQL, that was in a different file from the line in the previous step.)
 
 ## database setup
 for the example that starts in dockered_lamp/api/interface/mysql_message, i used this SQL to create the backing table (after replacing `$USER_PASSWORD` and `$ADMIN_PASSWORD` with actual passwords):
@@ -33,8 +42,8 @@ for the example that starts in dockered_lamp/api/interface/mysql_message, i used
 CREATE DATABASE sample_service CHARACTER SET UTF8mb4 COLLATE utf8mb4_bin;
 USE sample_service;
 
-CREATE USER 'service_user'@'localhost'  IDENTIFIED BY $USER_PASSWORD;
-CREATE USER 'service_admin'@'localhost' IDENTIFIED BY $ADMIN_PASSWORD;
+CREATE USER 'service_user'@'%'  IDENTIFIED BY $USER_PASSWORD;
+CREATE USER 'service_admin'@'%' IDENTIFIED BY $ADMIN_PASSWORD;
 
 CREATE TABLE mysql_messages
 (
@@ -42,9 +51,10 @@ CREATE TABLE mysql_messages
   content TEXT not null
 );
 
-GRANT SELECT ON sample_service.mysql_messages TO 'service_user'@'localhost';
-GRANT INSERT ON sample_service.mysql_messages TO 'service_admin'@'localhost';
-GRANT SELECT ON sample_service.mysql_messages TO 'service_admin'@'localhost';
-GRANT UPDATE ON sample_service.mysql_messages TO 'service_admin'@'localhost';
-GRANT DELETE ON sample_service.mysql_messages TO 'service_admin'@'localhost';
+GRANT SELECT ON sample_service.mysql_messages TO 'service_user'@'%';
+GRANT INSERT ON sample_service.mysql_messages TO 'service_admin'@'%';
+GRANT SELECT ON sample_service.mysql_messages TO 'service_admin'@'%';
+GRANT UPDATE ON sample_service.mysql_messages TO 'service_admin'@'%';
+GRANT DELETE ON sample_service.mysql_messages TO 'service_admin'@'%';
 ```
+note that using `'%'` for a user's host is less secure than setting the host to the docker container's ip address, but using the docker container's ip address introduces complications that i don't want to deal with at the moment.

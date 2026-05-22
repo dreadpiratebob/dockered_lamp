@@ -22,7 +22,7 @@ def _get(environment:dict, headers:dict, path_params:dict, query_params:dict, bo
   
   response_body = Messages(messages)
   
-  return Response(response_body, status_code)
+  return Response(response_body, status_code, use_public_fields_only=False)
 
 get = EndpointData \
 (

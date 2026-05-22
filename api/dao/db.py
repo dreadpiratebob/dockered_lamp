@@ -14,7 +14,7 @@ def get_messages(message_id:int = None, message_content:str = None) -> list[MySQ
   if len(grievances) > 0:
     raise TypeError('\n'.join(grievances))
   
-  query = 'SELECT id, content FROM messages'
+  query = 'SELECT id, content FROM mysql_messages'
   
   where_predicates = []
   args = []
@@ -36,10 +36,9 @@ def get_messages(message_id:int = None, message_content:str = None) -> list[MySQ
   result = []
   
   with get_cursor() as cursor:
-    cursor.get_cursor().execute(query, args)
-    message_count = cursor.execute(query, args)
+    message_count = cursor.get_cursor().execute(query, args)
     for i in range(message_count):
-      db_result = cursor.fetch()
+      db_result = cursor.get_cursor().fetchone()
       result.append(MySQLMessage(db_result['id'], db_result['content']))
   
   return result
