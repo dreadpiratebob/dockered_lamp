@@ -83,15 +83,37 @@ class MajorHTTPMIMETypes(Enum):
 major_http_mime_types_by_name = {mime_type.value:mime_type for mime_type in MajorHTTPMIMETypes}
 
 class MinorHTTPMIMETypes(Enum):
-  FLAC = 'flac'
-  JSON = 'json'
-  MPEG = 'mpeg'
-  PLAIN = 'plain'
-  STAR = '*'
-  X_YAML = 'x-yaml'
-  XML = 'xml'
-  YAML = 'yaml'
-minor_http_mime_types_by_name = {mime_type.value:mime_type for mime_type in MinorHTTPMIMETypes}
+  def __init__(self, name:str, parent:MajorHTTPMIMETypes):
+    self.name = name
+    self.parent = parent
+  
+  def __eq__(self, other) -> bool:
+    return isinstance(other, type(self)) and \
+      self.name == other.name and \
+      self.parent == other.parent
+  
+  def __ne__(self, other) -> bool:
+    return not self.__eq__(other)
+  
+  def __hash__(self) -> int:
+    return hash((self.name, self.parent))
+  
+  def __repr__(self) -> str:
+    return str(self)
+  
+  def __str__(self) -> str:
+    return '%s/%s' % (self.parent.value, self.name)
+  
+  CSS    = 'css',    MajorHTTPMIMETypes.TEXT
+  FLAC   = 'flac',   MajorHTTPMIMETypes.AUDIO
+  JSON   = 'json',   MajorHTTPMIMETypes.APPLICATION
+  MPEG   = 'mpeg',   MajorHTTPMIMETypes.AUDIO
+  PLAIN  = 'plain',  MajorHTTPMIMETypes.TEXT
+  STAR   = '*',      MajorHTTPMIMETypes.STAR
+  X_YAML = 'x-yaml', MajorHTTPMIMETypes.APPLICATION
+  XML    = 'xml',    MajorHTTPMIMETypes.APPLICATION
+  YAML   = 'yaml',   MajorHTTPMIMETypes.APPLICATION
+minor_http_mime_types_by_name = {mime_type.name: mime_type for mime_type in MinorHTTPMIMETypes}
 
 class HTTPMIMETypes(Enum):
   def __new__(self, *args, **kwds):
@@ -131,6 +153,7 @@ class HTTPMIMETypes(Enum):
   MEDIA_FLAC = 'audio/flac', None, bytes()
   MEDIA_MPEG = 'audio/mpeg', None, bytes()
   STAR_STAR = '*/*', None, bytes()
+  TEXT_CSS = 'text/css', None, '%s'
   TEXT_PLAIN = 'text/plain', None, '%s'
 
 class EndpointData:
