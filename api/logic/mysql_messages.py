@@ -17,8 +17,15 @@ def get_mysql_message(message_id:int) -> MySQLMessage:
 def get_mysql_messages(content_filter:str) -> list[MySQLMessage]:
   return get_messages(message_id=None, message_content=content_filter)
 
-def save_message(content:str) -> MySQLMessage:
-  if not isinstance(content, str):
-    raise TypeError('message content must be a string.')
+def save_message(mysql_message:MySQLMessage) -> MySQLMessage:
+  grievances = []
+  if not isinstance(mysql_message, MySQLMessage):
+    grievances.append('a mysql message must be a MySQLMessage.')
   
-  return save_message_to_db(content)
+  if mysql_message.get_id() is not None:
+    grievances.append('the id for a new mysql message id must be None.')
+  
+  if len(grievances) > 0:
+    raise TypeError('\n'.join(grievances))
+  
+  return save_message_to_db(mysql_message)

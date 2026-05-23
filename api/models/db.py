@@ -37,3 +37,9 @@ class MySQLMessage:
       return MySQLMessage(None, self._content + other)
     
     raise TypeError('only a MySQLMessage or a string can be added to a MySQLMessage.')
+  
+  def get_id(self) -> int:
+    return self._id
+  
+  def get_content(self) -> str:
+    return self._content

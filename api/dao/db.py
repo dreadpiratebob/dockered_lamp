@@ -43,12 +43,12 @@ def get_messages(message_id:int = None, message_content:str = None) -> list[MySQ
   
   return result
 
-def save_message(content:str) -> MySQLMessage:
-  if not isinstance(content, str):
-    raise TypeError('message content must be a string.')
+def save_message(mysql_message:MySQLMessage) -> MySQLMessage:
+  if not isinstance(mysql_message, MySQLMessage):
+    raise TypeError('a mysql message must be a MySQLMessage.')
   
   query = 'INSERT INTO mysql_messages (content) VALUES (%s)'
-  args = (content, )
+  args = (mysql_message.get_content(), )
   
   message_id = None
   with get_cursor(MySQLUser.USER_ADMIN) as cursor:
@@ -56,4 +56,4 @@ def save_message(content:str) -> MySQLMessage:
     
     message_id = cursor.get_cursor().lastrowid
   
-  return MySQLMessage(message_id, content)
+  return MySQLMessage(message_id, mysql_message.get_content())

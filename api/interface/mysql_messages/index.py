@@ -37,7 +37,9 @@ def _post(environment:dict, headers:dict, path_params:dict, query_params:dict, b
   for c in body:
     message_content += chr(c)
   
-  result = save_message(message_content)
+  mysql_message = MySQLMessage(None, message_content)
+  
+  result = save_message(mysql_message)
   status_code = HTTPStatusCodes.HTTP200
   
   return Response(result, status_code, use_public_fields_only=False)
