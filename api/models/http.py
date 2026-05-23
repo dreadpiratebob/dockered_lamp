@@ -200,15 +200,17 @@ class HTTPRange:
   def __len__(self) -> int:
     result = 0
     
-    for range in self.ranges:
-      if not isinstance(range[1], int):
+    for r in self.ranges:
+      if not isinstance(r[1], int):
         return None
       
-      if not isinstance(range[0], int):
-        result += range[1]
+      if not isinstance(r[0], int):
+        result += r[1]
         continue
       
-      result += range[1] - range[0]
+      result += r[1] - r[0]
+    
+    return result
   
   def __str__(self) -> str:
     result = '%s=' % self.unit
