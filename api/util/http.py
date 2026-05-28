@@ -310,7 +310,11 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
     return result[1:]
   
   if is_primitive(obj):
-    return quote_plus(str(obj))
+    result = str(obj)
+    if isinstance(obj, str):
+      result = quote_plus(result)
+    
+    return result
   
   if obj in seen_objs:
     if skip_circular_references:
