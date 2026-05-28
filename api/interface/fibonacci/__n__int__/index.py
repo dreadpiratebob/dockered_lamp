@@ -1,7 +1,6 @@
 from exceptions.http_base import BadRequestException
 from logic.fibonacci import get_nth_fibonacci_number
-from util.http import Response, HTTPStatusCodes
-from models.http import AvailablePath, HTTPMIMETypes, EndpointData
+from models.http import AvailablePath, HTTPMIMETypes, EndpointData, HTTPStatusCodes, Response
 from util.interface.fibonacci import FibonacciPathParams
 
 class Result:

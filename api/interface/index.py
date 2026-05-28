@@ -1,5 +1,4 @@
-from util.http import HTTPRequestMethods, HTTPStatusCodes, Response
-from models.http import HTTPMIMETypes, EndpointData
+from models.http import HTTPMIMETypes, EndpointData, HTTPStatusCodes, HTTPRequestMethods, Response
 
 
 class AvailablePaths:

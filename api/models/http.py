@@ -1,7 +1,8 @@
-from enum import Enum
-
 from exceptions.http_base import BadRequestException
 from util.functions import get_type_name, hash_dict, hash_list_or_tuple
+
+from enum import Enum
+from types import FunctionType
 
 class AvailablePath:
   def __init__(self, request_method:str = None, path:str = None, query_params:(list, tuple) = None, path_params:(list, tuple) = None, expected_body:str = None, description:str = None):
@@ -155,6 +156,7 @@ class HTTPMIMETypes(Enum):
   STAR_STAR = '*/*', None, bytes()
   TEXT_CSS = 'text/css', None, '%s'
   TEXT_PLAIN = 'text/plain', None, '%s'
+HTTPMIMETypes_by_name = {str(x): x for x in HTTPMIMETypes}
 
 class EndpointData:
   def __init__(self, func:callable, endpoint_help:AvailablePath, allowed_content_types:set[HTTPMIMETypes], default_content_type:HTTPMIMETypes):
@@ -279,3 +281,387 @@ def get_param(key:str, params:dict, parser:callable, type_name:str, required:boo
       return default_value, BadRequestException('the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name))
     else:
       raise BadRequestException('the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name))
+
+_bearer_prefix = 'Bearer '
+def get_authorization_header_value(value:str) -> str:
+  if value is None:
+    return None
+  
+  if not isinstance(value, str):
+    raise BadRequestException('an authorization header value must be a string.')
+  
+  if value[0:len(_bearer_prefix)] == _bearer_prefix:
+    return value[len(_bearer_prefix):]
+  
+  return value
+
+_range_header_prefix = 'range: '
+def _parse_range_header(header:str) -> HTTPRange:
+  if not isinstance(header, str):
+    raise TypeError('a range header value can only be parsed from a string.')
+  
+  header = header.lower()
+  
+  if header.startswith(_range_header_prefix):
+    header = header[len(_range_header_prefix):]
+  
+  header = header.split('=')
+  unit = header[0]
+  
+  ranges = []
+  tokens = header[1].split(', ')
+  invalid_values = []
+  for token in tokens:
+    token = token.split('-')
+    
+    start = token[0]
+    if len(start) == 0:
+      start = None
+    else:
+      try:
+        start = int(start)
+      except ValueError:
+        invalid_values.append(token[0])
+    
+    end = token[1]
+    if len(end) == 0:
+      end = None
+    else:
+      try:
+        end = int(end)
+      except ValueError:
+        invalid_values.append(token[1])
+    
+    ranges.append((start, end))
+  
+  if len(invalid_values) > 0:
+    raise BadRequestException('invalid range values: %s' % ', '.join(invalid_values))
+  
+  return HTTPRange(unit, ranges)
+
+class HTTPHeaders(Enum):
+  def __new__(self, *args, **kwds):
+    value = len(self.__members__) + 1
+    obj = object.__new__(self)
+    obj._value_ = value
+    return obj
+  
+  def __init__(self, header_name:str, other_names:set[str], get_value:FunctionType, default_value):
+    self._header_name = header_name
+    self._other_names = other_names
+    self._get_value = get_value
+    self._default_value = default_value
+  
+  def __hash__(self) -> int:
+    return hash(self._header_name)
+  
+  def __eq__(self, other:any) -> bool:
+    return isinstance(other, type(self)) and \
+      self._header_name == other._header_name
+  
+  def __ge__(self, other) -> bool:
+    if not isinstance(other, HTTPHeaders):
+      raise TypeError('http headers can only be compared to other http headers.')
+    
+    return self._header_name >= other._header_name
+  
+  def __gt__(self, other) -> bool:
+    if not isinstance(other, HTTPHeaders):
+      raise TypeError('http headers can only be compared to other http headers.')
+    
+    return self._header_name > other._header_name
+  
+  def __le__(self, other) -> bool:
+    if not isinstance(other, HTTPHeaders):
+      raise TypeError('http headers can only be compared to other http headers.')
+    
+    return self._header_name <= other._header_name
+  
+  def __lt__(self, other) -> bool:
+    if not isinstance(other, HTTPHeaders):
+      raise TypeError('http headers can only be compared to other http headers.')
+    
+    return self._header_name < other._header_name
+  
+  def __ne__(self, other) -> bool:
+    return not self.__eq__(other)
+  
+  def __repr__(self) -> str:
+    return 'http header (%s)' % (self._header_name, )
+  
+  def __str__(self) -> str:
+    return self._header_name
+  
+  def get_value(self, environment:dict) -> any:
+    for name in {self._header_name} | self._other_names:
+      if name in environment:
+        return self._get_value(environment[name])
+    
+    return self.default_value()
+  
+  def default_value(self) -> str:
+    return self._default_value
+  
+  ACCEPT = 'accept', {'HTTP_ACCEPT'}, lambda value: HTTPMIMETypes_by_name.get(value, HTTPMIMETypes.APPLICATION_YAML), HTTPMIMETypes.APPLICATION_YAML
+  AUTHORIZATION = 'authorization', {'Authorization', 'HTTP_AUTHORIZATION'}, get_authorization_header_value, None
+  CONTENT_TYPE = 'content-type', {'Content-Type', 'CONTENT_TYPE'}, lambda value: HTTPMIMETypes_by_name.get(value, HTTPMIMETypes.APPLICATION_YAML), HTTPMIMETypes.APPLICATION_YAML
+  RANGE = 'range', {'HTTP_RANGE'}, _parse_range_header, None
+
+class HTTPStatusCodes(Enum):
+  def __new__(self, *args, **kwds):
+    value = len(self.__members__) + 1
+    obj = object.__new__(self)
+    obj._value_ = value
+    return obj
+  
+  def __init__(self, code:int, message:str):
+    self._code = code
+    self._message = message
+  
+  def __hash__(self) -> int:
+    return hash(self._code)
+  
+  def __eq__(self, other:any) -> bool:
+    return isinstance(other, HTTPStatusCodes) and \
+      self._code == other._code
+  
+  def __ne__(self, other:any) -> bool:
+    return not self.__eq__(other)
+  
+  def __repr__(self) -> str:
+    return 'http status code (%s %s)' % (self._code, self._message)
+  
+  def __str__(self) -> str:
+    return str(self._code) + ' ' + self._message
+  
+  def get_code(self):
+    return self._code
+  
+  def get_message(self):
+    return self._message
+  
+  HTTP100 = 100, 'Continue'
+  HTTP102 = 102, 'Processing'
+  HTTP103 = 103, 'Early Hints'
+  HTTP200 = 200, 'OK'
+  HTTP201 = 201, 'Created'
+  HTTP202 = 202, 'Accepted'
+  HTTP203 = 203, 'Non-Authoritative Information'
+  HTTP204 = 204, 'No Content'
+  HTTP205 = 205, 'Reset Content'
+  HTTP206 = 206, 'Partial Content'
+  HTTP207 = 207, 'Multi-Status'
+  HTTP208 = 208, 'Already Reported'
+  HTTP218 = 218, 'This is fine'
+  HTTP226 = 226, 'IM Used'
+  HTTP300 = 300, 'Multiple Choices'
+  HTTP301 = 301, 'Moved Permanently'
+  HTTP302 = 302, 'Found'
+  HTTP303 = 303, 'See Other'
+  HTTP304 = 304, 'Not Modified'
+  HTTP305 = 305, 'Use Proxy'
+  HTTP306 = 306, 'Switch Proxy'
+  HTTP307 = 307, 'Temporary Redirect'
+  HTTP308 = 308, 'Permanent Redirect'
+  HTTP400 = 400, 'Bad Request'
+  HTTP401 = 401, 'Unauthorized'
+  HTTP402 = 402, 'Payment Required'
+  HTTP403 = 403, 'Forbidden'
+  HTTP404 = 404, 'Not Found'
+  HTTP405 = 405, 'Method Not Allowed'
+  HTTP406 = 406, 'Not Acceptable'
+  HTTP407 = 407, 'Proxy Authentication Required'
+  HTTP408 = 408, 'Request Timeout'
+  HTTP409 = 409, 'Conflict'
+  HTTP410 = 410, 'Gone'
+  HTTP411 = 411, 'Length Required'
+  HTTP412 = 412, 'Precondition Failed'
+  HTTP413 = 413, 'Payload Too Large'
+  HTTP414 = 414, 'URI Too Long'
+  HTTP415 = 415, 'Unsupported Media Type'
+  HTTP416 = 416, 'Range Not Satisfiable'
+  HTTP417 = 417, 'Expectation Failed'
+  HTTP418 = 418, 'I\'m a teapot'
+  HTTP421 = 421, 'Misdirected Request'
+  HTTP422 = 422, 'Unprocessable Entity'
+  HTTP423 = 423, 'Locked'
+  HTTP424 = 424, 'Failed Dependency'
+  HTTP425 = 425, 'Too Early'
+  HTTP426 = 426, 'Upgrade Required'
+  HTTP428 = 428, 'Precondition Required'
+  HTTP429 = 429, 'Too Many Requests'
+  HTTP431 = 431, 'Request Header Fields Too Large'
+  HTTP451 = 451, 'Unavailable For Legal Reasons'
+  HTTP500 = 500, 'Internal Server Error'
+  HTTP501 = 501, 'Not Implemented'
+  HTTP502 = 502, 'Bad Gateway'
+  HTTP503 = 503, 'Service Unavailable'
+  HTTP504 = 504, 'Gateway Timeout'
+  HTTP505 = 505, 'HTTP Version Not Supported'
+  HTTP506 = 506, 'Variant Also Negotiates'
+  HTTP507 = 507, 'Insufficient Storage'
+  HTTP508 = 508, 'Loop Detected'
+  HTTP510 = 510, 'Not Extended'
+  HTTP511 = 511, 'Network Authentication Required'
+HTTPStatusCodes_by_code = {sc.get_code(): sc for sc in HTTPStatusCodes}
+
+class HTTPRequestMethods(Enum):
+  def __new__(self, *args, **kwds):
+    value = len(self.__members__) + 1
+    obj = object.__new__(self)
+    obj._value_ = value
+    return obj
+  
+  def __init__(self, name:str):
+    self._name = name
+  
+  def __eq__(self, other:any) -> bool:
+    return isinstance(other, HTTPRequestMethods) and self._name == other._name
+  
+  def __ne__(self, other:any) -> bool:
+    return not self.__eq__(other)
+  
+  def __hash__(self) -> int:
+    return hash(self._name)
+  
+  def __repr__(self) -> str:
+    return 'http request method (%s)' % (self._name, )
+  
+  def __str__(self) -> str:
+    return self._name
+  
+  DELETE  = 'delete'
+  GET     = 'get'
+  OPTIONS = 'options'
+  PATCH   = 'patch'
+  POST    = 'post'
+  PUT     = 'put'
+HTTPRequestMethods_by_name = {rm.name.lower(): rm for rm in HTTPRequestMethods} | {rm.name.upper(): rm for rm in HTTPRequestMethods}
+
+class Message:
+  def __init__(self, message:str):
+    self.message = message
+  
+  def __eq__(self, other:any) -> bool:
+    if not isinstance(other, Message):
+      return False
+    
+    return self.message == other.message
+  
+  def __ne__(self, other:any) -> bool:
+    return not self.__eq__(other)
+  
+  def __hash__(self) -> int:
+    return hash(self.message)
+  
+  def __add__(self, other:any):
+    if isinstance(other, Message):
+      return Message(self.message + other.message)
+    elif isinstance(other, str):
+      return Message(self.message + other)
+    else:
+      raise TypeError('can only add messages or strings to messages.')
+  
+  def __iadd__(self, other:any) -> None:
+    if isinstance(other, Message):
+      self.message += other.message
+    elif isinstance(other, str):
+      self.message += other
+    else:
+      raise TypeError('can only add messages or strings to messages.')
+  
+  def __repr__(self) -> str:
+    return 'message(%s)' % (self.message, )
+  
+  def __str__(self) -> str:
+    return self.message
+
+class Response:
+  def __init__(self, payload:any, status_code:HTTPStatusCodes, mime_type:HTTPMIMETypes = None, serialization_falls_back_to_fields:bool = True, use_public_fields_only:bool = True, use_base_field_in_xml:bool = False, use_base_field_in_yaml:bool = False, data_is_raw:bool = False, content_length:int = None, headers:dict[str, str] = None):
+    grievances = []
+    
+    if not isinstance(status_code, HTTPStatusCodes):
+      grievances.append('a status_code must be an HTTPStatusCode.')
+    
+    if mime_type is not None and not isinstance(mime_type, HTTPMIMETypes):
+      grievances.append('a mime type must be an HTTPMIMEType.')
+    
+    if not isinstance(serialization_falls_back_to_fields, bool):
+      grievances.append('the "fall back to fields" flag must be a bool.')
+    
+    if not isinstance(use_public_fields_only, bool):
+      grievances.append('the "use public fields only" flag must be a bool.')
+    
+    if not isinstance(use_base_field_in_xml, bool):
+      grievances.append('the "use base field in xml" flag must be a bool.')
+    
+    if not isinstance(use_base_field_in_yaml, bool):
+      grievances.append('the "use base field in yaml" flag must be a bool.')
+    
+    if not isinstance(data_is_raw, bool):
+      grievances.append('the "data is raw" flag must be a bool.')
+    
+    if content_length is not None and not isinstance(content_length, int):
+      grievances.append('a content\'s length must be an int.')
+    
+    if headers is None:
+      headers = dict()
+    elif isinstance(headers, dict):
+      for key, value in headers.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+          grievances.append('a header\'s name and value must be a string.')
+          break
+    else:
+      grievances.append('headers must be a dict.')
+    
+    if len(grievances) > 0:
+      raise TypeError('\n'.join(grievances))
+    
+    self.payload = payload
+    self._status_code = status_code
+    self._mime_type = mime_type
+    self._fall_back_to_fields = serialization_falls_back_to_fields
+    self._use_public_fields_only = use_public_fields_only
+    self._use_base_field_in_xml = use_base_field_in_xml
+    self._use_base_field_in_yaml = use_base_field_in_yaml
+    self._data_is_raw = data_is_raw
+    self._content_length = content_length
+    self._headers = headers
+  
+  def get_status_code(self) -> HTTPStatusCodes:
+    return self._status_code
+  
+  def get_mime_type(self) -> HTTPMIMETypes:
+    return self._mime_type
+  
+  def set_mime_type(self, mime_type:HTTPMIMETypes) -> None:
+    if not isinstance(mime_type, HTTPMIMETypes):
+      raise TypeError('a mime type must be an HTTPMIMEType.')
+    
+    self._mime_type = mime_type
+  
+  def data_is_raw(self) -> bool:
+    return self._data_is_raw
+  
+  def get_headers(self) -> dict:
+    return self._headers
+  
+  def upsert_headers(self, headers:dict[str, str]) -> None:
+    if not isinstance(headers, dict):
+      raise TypeError('headers must be a dict[str, str].')
+    
+    if self._headers is None:
+      self._headers = dict()
+    
+    for key, value in headers.items():
+      if not isinstance(key, str) or not isinstance(value, str):
+        raise TypeError('headers must be a dict[str, str].')
+    
+    for key, value in headers.items():
+      self._headers[key] = value
+  
+  def get_content_length(self) -> int:
+    return self._content_length
+  
+  def serialization_falls_back_to_fields(self) -> bool:
+    return self._fall_back_to_fields

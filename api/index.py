@@ -12,16 +12,11 @@ from exceptions.http_base import \
   MethodNotAllowedException
 from util.logger import get_logger
 from util.http import \
-  HTTPStatusCodes, \
-  HTTPRequestMethods, \
-  HTTPRequestMethods_by_name, \
-  HTTPHeaders, \
-  Response, \
-  ResponseMessage, \
-  build_http_response_from_exception, \
   default_text_HTTPMIMEType, \
-  text_HTTPMIMETypes
-from models.http import MajorHTTPMIMETypes, HTTPMIMETypes
+  text_HTTPMIMETypes, get_response_payload_as_bytes
+from models.factories.response_factory import build_http_response_from_exception
+from models.http import MajorHTTPMIMETypes, HTTPMIMETypes, HTTPHeaders, HTTPStatusCodes, HTTPRequestMethods, \
+  HTTPRequestMethods_by_name, Message, Response
 from util.http_path import \
   get_and_validate_rel_path, \
   default_interface_dir, \
@@ -194,7 +189,7 @@ def preprocess_request(environment:dict, body:str):
   return environment
 
 def application(environment, start_response):
-  response = Response(ResponseMessage('no.'), HTTPStatusCodes.HTTP501)
+  response = Response(Message('no.'), HTTPStatusCodes.HTTP501)
   headers = { HTTPHeaders.ACCEPT: HTTPHeaders.ACCEPT.get_value(environment) }
   
   try:
@@ -220,7 +215,7 @@ def application(environment, start_response):
     if headers[HTTPHeaders.ACCEPT] not in text_HTTPMIMETypes:
       response.set_mime_type(default_text_HTTPMIMEType)
   
-  output = response.get_payload_as_bytes(bytes_encoding)
+  output = get_response_payload_as_bytes(response, bytes_encoding)
   content_length = len(output) if response.get_content_length() is None else response.get_content_length()
   
   if not isinstance(output, GeneratorType):

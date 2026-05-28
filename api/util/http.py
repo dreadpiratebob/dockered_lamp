@@ -1,14 +1,10 @@
-from exceptions.http_base import BaseHTTPException, BadRequestException
-from models.http import HTTPRange, HTTPMIMETypes
+from models.http import HTTPMIMETypes, Response
 from util.functions import get_type_name, is_primitive
-from util.logger import log_exception
 
 from enum import Enum
 from inspect import signature
-from types import FunctionType
 from urllib.parse import quote_plus
 
-HTTPMIMETypes_by_name = {str(x): x for x in HTTPMIMETypes}
 text_HTTPMIMETypes = \
 {
   HTTPMIMETypes.APPLICATION_JSON,
@@ -19,443 +15,62 @@ text_HTTPMIMETypes = \
 }
 default_text_HTTPMIMEType = HTTPMIMETypes.APPLICATION_JSON
 
-_bearer_prefix = 'Bearer '
-def get_authorization_header_value(value:str) -> str:
-  if value is None:
-    return None
+def get_response_payload_as_bytes(response:Response, encoding:str, fail_on_missing_mime_type:bool = True) -> bytes:
+  if response.data_is_raw():
+    return response.payload
   
-  if not isinstance(value, str):
-    raise BadRequestException('an authorization header value must be a string.')
-  
-  if value[0:len(_bearer_prefix)] == _bearer_prefix:
-    return value[len(_bearer_prefix):]
-  
-  return value
+  return bytes(serialize_response(response, fail_on_missing_mime_type), encoding)
 
-_range_header_prefix = 'range: '
-def _parse_range_header(header: str) -> HTTPRange:
-  if not isinstance(header, str):
-    raise TypeError('a range header value can only be parsed from a string.')
+def serialize_response(response:Response, fail_on_missing_mime_type:bool = True) -> str:
+  if response.data_is_raw():
+    return str(response.payload)
   
-  header = header.lower()
+  if response.payload is None:
+    return ''
   
-  if header.startswith(_range_header_prefix):
-    header = header[len(_range_header_prefix):]
-  
-  header = header.split('=')
-  unit = header[0]
-  
-  ranges = []
-  tokens = header[1].split(', ')
-  invalid_values = []
-  for token in tokens:
-    token = token.split('-')
-    
-    start = token[0]
-    if len(start) == 0:
-      start = None
-    else:
-      try:
-        start = int(start)
-      except ValueError:
-        invalid_values.append(token[0])
-    
-    end = token[1]
-    if len(end) == 0:
-      end = None
-    else:
-      try:
-        end = int(end)
-      except ValueError:
-        invalid_values.append(token[1])
-    
-    ranges.append((start, end))
-  
-  if len(invalid_values) > 0:
-    raise BadRequestException('invalid range values: %s' % ', '.join(invalid_values))
-  
-  return HTTPRange(unit, ranges)
-
-class HTTPHeaders(Enum):
-  def __new__(self, *args, **kwds):
-    value = len(self.__members__) + 1
-    obj = object.__new__(self)
-    obj._value_ = value
-    return obj
-  
-  def __init__(self, header_name:str, other_names:set[str], get_value:FunctionType, default_value):
-    self._header_name = header_name
-    self._other_names = other_names
-    self._get_value = get_value
-    self._default_value = default_value
-  
-  def __hash__(self):
-    return hash(self._header_name)
-  
-  def __eq__(self, other):
-    return isinstance(other, type(self)) and \
-      self._header_name == other._header_name
-  
-  def __ge__(self, other):
-    if not isinstance(other, HTTPHeaders):
-      raise TypeError('http headers can only be compared to other http headers.')
-    
-    return self._header_name >= other._header_name
-  
-  def __gt__(self, other):
-    if not isinstance(other, HTTPHeaders):
-      raise TypeError('http headers can only be compared to other http headers.')
-    
-    return self._header_name > other._header_name
-  
-  def __le__(self, other):
-    if not isinstance(other, HTTPHeaders):
-      raise TypeError('http headers can only be compared to other http headers.')
-    
-    return self._header_name <= other._header_name
-  
-  def __lt__(self, other):
-    if not isinstance(other, HTTPHeaders):
-      raise TypeError('http headers can only be compared to other http headers.')
-    
-    return self._header_name < other._header_name
-  
-  def __ne__(self, other):
-    return not self.__eq__(other)
-  
-  def __str__(self):
-    return self._header_name
-  
-  def get_value(self, environment:dict):
-    for name in {self._header_name} | self._other_names:
-      if name in environment:
-        return self._get_value(environment[name])
-    
-    return self.default_value()
-  
-  def default_value(self) -> str:
-    return self._default_value
-  
-  ACCEPT = 'accept', {'HTTP_ACCEPT'}, lambda value: HTTPMIMETypes_by_name.get(value, HTTPMIMETypes.APPLICATION_YAML), HTTPMIMETypes.APPLICATION_YAML
-  AUTHORIZATION = 'authorization', {'Authorization', 'HTTP_AUTHORIZATION'}, get_authorization_header_value, None
-  CONTENT_TYPE = 'content-type', {'Content-Type', 'CONTENT_TYPE'}, lambda value: HTTPMIMETypes_by_name.get(value, HTTPMIMETypes.APPLICATION_YAML), HTTPMIMETypes.APPLICATION_YAML
-  RANGE = 'range', {'HTTP_RANGE'}, _parse_range_header, None
-
-class HTTPStatusCodes(Enum):
-  def __new__(self, *args, **kwds):
-    value = len(self.__members__) + 1
-    obj = object.__new__(self)
-    obj._value_ = value
-    return obj
-  
-  def __init__(self, code:int, message:str):
-    self._code = code
-    self._message = message
-  
-  def __hash__(self):
-    return hash(self._code)
-  
-  def __eq__(self, other):
-    return isinstance(other, HTTPStatusCodes) and \
-      self._code == other._code
-  
-  def __ne__(self, other):
-    return not self.__eq__(other)
-  
-  def __str__(self):
-    return str(self._code) + ' ' + self._message
-  
-  def get_code(self):
-    return self._code
-  
-  def get_message(self):
-    return self._message
-  
-  HTTP100 = 100, 'Continue'
-  HTTP102 = 102, 'Processing'
-  HTTP103 = 103, 'Early Hints'
-  HTTP200 = 200, 'OK'
-  HTTP201 = 201, 'Created'
-  HTTP202 = 202, 'Accepted'
-  HTTP203 = 203, 'Non-Authoritative Information'
-  HTTP204 = 204, 'No Content'
-  HTTP205 = 205, 'Reset Content'
-  HTTP206 = 206, 'Partial Content'
-  HTTP207 = 207, 'Multi-Status'
-  HTTP208 = 208, 'Already Reported'
-  HTTP218 = 218, 'This is fine'
-  HTTP226 = 226, 'IM Used'
-  HTTP300 = 300, 'Multiple Choices'
-  HTTP301 = 301, 'Moved Permanently'
-  HTTP302 = 302, 'Found'
-  HTTP303 = 303, 'See Other'
-  HTTP304 = 304, 'Not Modified'
-  HTTP305 = 305, 'Use Proxy'
-  HTTP306 = 306, 'Switch Proxy'
-  HTTP307 = 307, 'Temporary Redirect'
-  HTTP308 = 308, 'Permanent Redirect'
-  HTTP400 = 400, 'Bad Request'
-  HTTP401 = 401, 'Unauthorized'
-  HTTP402 = 402, 'Payment Required'
-  HTTP403 = 403, 'Forbidden'
-  HTTP404 = 404, 'Not Found'
-  HTTP405 = 405, 'Method Not Allowed'
-  HTTP406 = 406, 'Not Acceptable'
-  HTTP407 = 407, 'Proxy Authentication Required'
-  HTTP408 = 408, 'Request Timeout'
-  HTTP409 = 409, 'Conflict'
-  HTTP410 = 410, 'Gone'
-  HTTP411 = 411, 'Length Required'
-  HTTP412 = 412, 'Precondition Failed'
-  HTTP413 = 413, 'Payload Too Large'
-  HTTP414 = 414, 'URI Too Long'
-  HTTP415 = 415, 'Unsupported Media Type'
-  HTTP416 = 416, 'Range Not Satisfiable'
-  HTTP417 = 417, 'Expectation Failed'
-  HTTP418 = 418, 'I\'m a teapot'
-  HTTP421 = 421, 'Misdirected Request'
-  HTTP422 = 422, 'Unprocessable Entity'
-  HTTP423 = 423, 'Locked'
-  HTTP424 = 424, 'Failed Dependency'
-  HTTP425 = 425, 'Too Early'
-  HTTP426 = 426, 'Upgrade Required'
-  HTTP428 = 428, 'Precondition Required'
-  HTTP429 = 429, 'Too Many Requests'
-  HTTP431 = 431, 'Request Header Fields Too Large'
-  HTTP451 = 451, 'Unavailable For Legal Reasons'
-  HTTP500 = 500, 'Internal Server Error'
-  HTTP501 = 501, 'Not Implemented'
-  HTTP502 = 502, 'Bad Gateway'
-  HTTP503 = 503, 'Service Unavailable'
-  HTTP504 = 504, 'Gateway Timeout'
-  HTTP505 = 505, 'HTTP Version Not Supported'
-  HTTP506 = 506, 'Variant Also Negotiates'
-  HTTP507 = 507, 'Insufficient Storage'
-  HTTP508 = 508, 'Loop Detected'
-  HTTP510 = 510, 'Not Extended'
-  HTTP511 = 511, 'Network Authentication Required'
-
-HTTPStatusCodes_by_code = {sc.get_code(): sc for sc in HTTPStatusCodes}
-
-class HTTPRequestMethods(Enum):
-  def __new__(self, *args, **kwds):
-    value = len(self.__members__) + 1
-    obj = object.__new__(self)
-    obj._value_ = value
-    return obj
-  
-  def __init__(self, name:str):
-    self._name = name
-  
-  def __eq__(self, other):
-    return isinstance(other, HTTPRequestMethods) and self._name == other._name
-  
-  def __ne__(self, other):
-    return not self.__eq__(other)
-  
-  def __hash__(self):
-    return hash(self._name)
-  
-  def __str__(self):
-    return self._name
-  
-  DELETE  = 'delete'
-  GET     = 'get'
-  OPTIONS = 'options'
-  PATCH   = 'patch'
-  POST    = 'post'
-  PUT     = 'put'
-
-HTTPRequestMethods_by_name = {rm.name.lower(): rm for rm in HTTPRequestMethods} | {rm.name.upper(): rm for rm in HTTPRequestMethods}
-
-class Response:
-  def __init__(self, payload, status_code:HTTPStatusCodes, mime_type: HTTPMIMETypes = None, serialization_falls_back_to_fields:bool = True, use_public_fields_only:bool = True, use_base_field_in_xml = False, use_base_field_in_yaml:bool = False, data_is_raw:bool = False, content_length:int = None, headers:dict[str, str] = None):
-    grievances = []
-    
-    if not isinstance(status_code, HTTPStatusCodes):
-      grievances.append('a status_code must be an HTTPStatusCode.')
-    
-    if mime_type is not None and not isinstance(mime_type, HTTPMIMETypes):
-      grievances.append('a mime type must be an HTTPMIMEType.')
-    
-    if not isinstance(serialization_falls_back_to_fields, bool):
-      grievances.append('the "fall back to fields" flag must be a bool.')
-    
-    if not isinstance(use_public_fields_only, bool):
-      grievances.append('the "use public fields only" flag must be a bool.')
-    
-    if not isinstance(use_base_field_in_xml, bool):
-      grievances.append('the "use base field in xml" flag must be a bool.')
-    
-    if not isinstance(use_base_field_in_yaml, bool):
-      grievances.append('the "use base field in yaml" flag must be a bool.')
-    
-    if not isinstance(data_is_raw, bool):
-      grievances.append('the "data is raw" flag must be a bool.')
-    
-    if content_length is not None and not isinstance(content_length, int):
-      grievances.append('a content\'s length must be an int.')
-    
-    if headers is None:
-      headers = dict()
-    elif isinstance(headers, dict):
-      for key, value in headers.items():
-        if not isinstance(key, str) or not isinstance(value, str):
-          grievances.append('a header\'s name and value must be a string.')
-          break
-    else:
-      grievances.append('headers must be a dict.')
-    
-    if len(grievances) > 0:
-      raise TypeError('\n'.join(grievances))
-    
-    self.payload = payload
-    self._status_code = status_code
-    self._mime_type = mime_type
-    self._fall_back_to_fields = serialization_falls_back_to_fields
-    self._use_public_fields_only = use_public_fields_only
-    self._use_base_field_in_xml = use_base_field_in_xml
-    self._use_base_field_in_yaml = use_base_field_in_yaml
-    self._data_is_raw = data_is_raw
-    self._content_length = content_length
-    self._headers = headers
-  
-  def __str__(self):
-    mime_was_none = False
-    if self._mime_type is None:
-      self._mime_type = HTTPMIMETypes.TEXT_PLAIN
-      mime_was_none = True
-    
-    result = self.serialize()
-    
-    if mime_was_none:
-      self._mime_type = None
-    
-    return result
-  
-  def get_status_code(self):
-    return self._status_code
-  
-  def get_mime_type(self):
-    return self._mime_type
-  
-  def set_mime_type(self, mime_type: HTTPMIMETypes):
-    if not isinstance(mime_type, HTTPMIMETypes):
-      raise TypeError('a mime type must be an HTTPMIMEType.')
-    
-    self._mime_type = mime_type
-  
-  def data_is_raw(self):
-    return self._data_is_raw
-  
-  def get_headers(self):
-    return self._headers
-  
-  def upsert_headers(self, headers:dict[str, str]) -> None:
-    if not isinstance(headers, dict):
-      raise TypeError('headers must be a dict[str, str].')
-    
-    if self._headers is None:
-      self._headers = dict()
-    
-    for key, value in headers.items():
-      if not isinstance(key, str) or not isinstance(value, str):
-        raise TypeError('headers must be a dict[str, str].')
-    
-    for key, value in headers.items():
-      self._headers[key] = value
-  
-  def get_content_length(self):
-    return self._content_length
-  
-  def get_payload_as_bytes(self, encoding:str) -> bytes:
-    if self._data_is_raw:
-      return self.payload
-    
-    return bytes(self.serialize(), encoding)
-  
-  def serialize(self) -> str:
-    if self._data_is_raw:
-      return str(self.payload)
-    
-    if self.payload is None:
-      return ''
-    
-    if self._mime_type is None:
+  mime_type_was_none = False
+  result = None
+  if response.get_mime_type() is None:
+    if fail_on_missing_mime_type:
       raise ValueError('no mime type was given.')
-    
-    serializer_function_name = self._mime_type.serializer_function_name
-    
-    if serializer_function_name is not None and hasattr(self.payload, serializer_function_name):
-      serializer_function = getattr(self.payload, serializer_function_name)
-      
-      if callable(serializer_function) and len(signature(serializer_function).parameters) == 1:
-        return serializer_function(self.payload)
-    
-    if self._fall_back_to_fields:
-      return self.serialize_by_field()
-    
-    data = quote_plus(str(self.payload))
-    return self._mime_type.base_structure % data
+    else:
+      response.set_mime_type(HTTPMIMETypes.TEXT_PLAIN)
+      mime_type_was_none = True
   
-  def serialize_by_field(self):
-    if self._data_is_raw:
-      raise ValueError('raw data can\'t be serialized (by field or otherwise).')
+  serializer_function_name = response.get_mime_type().serializer_function_name
+  if serializer_function_name is not None and hasattr(response.payload, serializer_function_name):
+    serializer_function = getattr(response.payload, serializer_function_name)
     
-    if self._mime_type is None:
-      raise ValueError('no mime type was given.')
-    
-    if self._mime_type == HTTPMIMETypes.APPLICATION_JSON:
-      return serialize_by_field_to_json(self.payload, self._use_public_fields_only)
-    
-    if self._mime_type == HTTPMIMETypes.APPLICATION_XML:
-      return serialize_by_field_to_xml(self.payload, self._use_public_fields_only, self._use_base_field_in_xml)
-    
-    if self._mime_type == HTTPMIMETypes.APPLICATION_X_YAML or self._mime_type == HTTPMIMETypes.APPLICATION_YAML:
-      return serialize_by_field_to_yaml(self.payload, self._use_public_fields_only, self._use_base_field_in_yaml)
-    
-    if self._mime_type == HTTPMIMETypes.TEXT_PLAIN:
-      return serialize_by_field_to_plain_text(self.payload, self._use_public_fields_only)
-    
-    raise ValueError('can\'t serialize by field to %s.' % (self._mime_type, ))
+    if callable(serializer_function) and len(signature(serializer_function).parameters) == 1:
+      result = serializer_function(response.payload)
+  elif response.serialization_falls_back_to_fields():
+    result = serialize_response_by_field(response)
+  else:
+    data = quote_plus(str(response.payload))
+    result = response.get_mime_type().base_structure % (data, )
+  
+  if mime_type_was_none:
+    response.set_mime_type(None)
+  
+  return result
 
-class Message:
-  def __init__(self, message:str):
-    self.message = message
+# there's probly a better way to do this.  i kinda want generics.
+_response_serializers_by_mime_type = \
+{
+  HTTPMIMETypes.APPLICATION_JSON:lambda response:serialize_by_field_to_json(response.payload, response.use_public_fields_only()),
+  HTTPMIMETypes.TEXT_PLAIN:lambda response:serialize_by_field_to_plain_text(response.payload, response.use_public_fields_only()),
+  HTTPMIMETypes.APPLICATION_XML:lambda response:serialize_by_field_to_xml(response.payload, response.use_public_fields_only(), response.use_base_field_in_xml()),
+  HTTPMIMETypes.APPLICATION_X_YAML:lambda response:serialize_by_field_to_yaml(response.payload, response.use_public_fields_only(), response.use_base_field_in_yaml()),
+  HTTPMIMETypes.APPLICATION_YAML:lambda response:serialize_by_field_to_yaml(response.payload, response.use_public_fields_only(), response.use_base_field_in_yaml()),
+}
+def serialize_response_by_field(response:Response) -> str:
+  if response.data_is_raw():
+    raise ValueError('raw data can\'t be serialized (by field or otherwise).')
   
-  def __eq__(self, other):
-    if not isinstance(other, Message):
-      return False
-    
-    return self.message == other.message
+  if response.get_mime_type() not in _response_serializers_by_mime_type:
+    raise ValueError('can\'t serialize by field to %s.' % (response.get_mime_type(), ))
   
-  def __ne__(self, other):
-    if not isinstance(other, Message):
-      return True
-    
-    return self.message != other.message
-  
-  def __hash__(self):
-    return hash(self.message)
-  
-  def __add__(self, other):
-    if isinstance(other, Message):
-      return Message(self.message + other.message)
-    elif isinstance(other, str):
-      return Message(self.message + other)
-    else:
-      raise TypeError('can only add messages or strings to messages.')
-  
-  def __iadd__(self, other):
-    if isinstance(other, Message):
-      self.message += other.message
-    elif isinstance(other, str):
-      self.message += other
-    else:
-      raise TypeError('can only add messages or strings to messages.')
-  
-  def __str__(self):
-    return self.message
+  return _response_serializers_by_mime_type[response.get_mime_type()](response)
 
 circular_reference_text = quote_plus('<circular reference>')
 _exclude_from_serialization = '_exclude_from_serialization'
@@ -885,30 +500,21 @@ def _serialize_by_field_to_plain_text(obj:any, public_only:bool, use_base_field:
   
   return result
 
-class ResponseMessage:
-  def __init__(self, message:str):
-    if not isinstance(message, str):
-      raise TypeError('give me a string for an error message, nub.')
+def set_response_properties() -> None:
+  # monkey patching to avoid circular references, so that i can put models in one file and serde functions in a different file.
+  
+  def _repr(self: Response) -> str:
+    result = serialize_response(self, False)
     
-    self.message = message
+    if self.get_mime_type() is None:
+      return result
+    
+    return '%s (%s)' % (result, self.get_mime_type())
   
-  def __str__(self):
-    return str(self.message)
-
-def build_http_response_from_exception(exception:Exception, mime_type: HTTPMIMETypes = None):
-  grievances = []
+  Response.__repr__ = _repr
   
-  if not isinstance(exception, Exception):
-    grievances.append('an exception must be an Exception.')
+  def _str(self: Response) -> str:
+    return serialize_response(self, False)
   
-  if mime_type is not None and not isinstance(mime_type, HTTPMIMETypes):
-    grievances.append('a mime_type must be an HTTPMIMEType.')
-  
-  if len(grievances) > 0:
-    raise TypeError('\n'.join(grievances))
-  
-  if not isinstance(exception, BaseHTTPException):
-    log_exception(exception)
-    return Response(ResponseMessage("an internal error occurred."), HTTPStatusCodes.HTTP500, mime_type)
-  
-  return Response(ResponseMessage(exception.get_message()), HTTPStatusCodes_by_code[exception.get_status()], mime_type)
+  Response.__str__ = _str
+set_response_properties()

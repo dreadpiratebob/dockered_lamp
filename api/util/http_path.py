@@ -4,9 +4,8 @@ from exceptions.http_base import \
   NotFoundException, \
   AmbiguousPathException, \
   InternalServerError
-from models.http import AvailablePath, HTTPMIMETypes
+from models.http import AvailablePath, HTTPMIMETypes, HTTPRequestMethods
 from util.functions import hash_dict
-from util.http import HTTPRequestMethods
 
 import re
 
