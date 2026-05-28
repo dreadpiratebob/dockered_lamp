@@ -85,25 +85,25 @@ major_http_mime_types_by_name = {mime_type.value:mime_type for mime_type in Majo
 
 class MinorHTTPMIMETypes(Enum):
   def __init__(self, name:str, parent:MajorHTTPMIMETypes):
-    self.name = name
+    self.type_name = name
     self.parent = parent
   
   def __eq__(self, other) -> bool:
     return isinstance(other, type(self)) and \
-      self.name == other.name and \
+      self.type_name == other.type_name and \
       self.parent == other.parent
   
   def __ne__(self, other) -> bool:
     return not self.__eq__(other)
   
   def __hash__(self) -> int:
-    return hash((self.name, self.parent))
+    return hash((self.type_name, self.parent))
   
   def __repr__(self) -> str:
     return str(self)
   
   def __str__(self) -> str:
-    return '%s/%s' % (self.parent.value, self.name)
+    return '%s/%s' % (self.parent.value, self.type_name)
   
   CSS    = 'css',    MajorHTTPMIMETypes.TEXT
   FLAC   = 'flac',   MajorHTTPMIMETypes.AUDIO
@@ -114,7 +114,7 @@ class MinorHTTPMIMETypes(Enum):
   X_YAML = 'x-yaml', MajorHTTPMIMETypes.APPLICATION
   XML    = 'xml',    MajorHTTPMIMETypes.APPLICATION
   YAML   = 'yaml',   MajorHTTPMIMETypes.APPLICATION
-minor_http_mime_types_by_name = {mime_type.name: mime_type for mime_type in MinorHTTPMIMETypes}
+minor_http_mime_types_by_name = {mime_type.type_name: mime_type for mime_type in MinorHTTPMIMETypes}
 
 class HTTPMIMETypes(Enum):
   def __new__(self, *args, **kwds):
@@ -665,3 +665,12 @@ class Response:
   
   def serialization_falls_back_to_fields(self) -> bool:
     return self._fall_back_to_fields
+  
+  def use_public_fields_only(self) -> bool:
+    return self._use_public_fields_only
+  
+  def use_base_field_in_xml(self) -> bool:
+    return self._use_base_field_in_xml
+  
+  def use_base_field_in_yaml(self) -> bool:
+    return self._use_base_field_in_yaml

@@ -503,18 +503,16 @@ def _serialize_by_field_to_plain_text(obj:any, public_only:bool, use_base_field:
 def set_response_properties() -> None:
   # monkey patching to avoid circular references, so that i can put models in one file and serde functions in a different file.
   
-  def _repr(self: Response) -> str:
+  def _repr(self:Response) -> str:
     result = serialize_response(self, False)
     
     if self.get_mime_type() is None:
       return result
     
     return '%s (%s)' % (result, self.get_mime_type())
-  
   Response.__repr__ = _repr
   
-  def _str(self: Response) -> str:
+  def _str(self:Response) -> str:
     return serialize_response(self, False)
-  
   Response.__str__ = _str
 set_response_properties()
