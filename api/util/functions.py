@@ -100,3 +100,20 @@ def hash_list_or_tuple(obj:[list, tuple]) -> int:
 
 def is_primitive(obj:any) -> bool:
   return not hasattr(obj, '__dict__')
+
+def parse_bool(obj:any, throw_on_failure:bool = True, default_value:bool = False) -> bool:
+  if isinstance(obj, bool):
+    return obj
+  elif isinstance(obj, str):
+    text = obj.lower()
+    if text == 'true' or text == 'yes':
+      return True
+    if text == 'false' or text == 'no':
+      return False
+  elif isinstance(obj, (int, float)):
+    return obj != 0
+  
+  if throw_on_failure:
+    raise ValueError('"%s" (a(n) %s) isn\'t parsable as a bool.' % (str(obj), get_type_name(obj)))
+  else:
+    return default_value

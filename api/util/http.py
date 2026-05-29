@@ -1,12 +1,10 @@
 from models.http import HTTPMIMETypes, Response
 from util.functions import get_type_name, is_primitive
+from util.serde import int_to_str
 
 from enum import Enum
 from inspect import signature
-from math import floor
 from urllib.parse import quote_plus
-
-from util.serde import int_to_str
 
 text_HTTPMIMETypes = \
 {
