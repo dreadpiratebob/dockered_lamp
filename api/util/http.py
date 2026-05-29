@@ -3,7 +3,10 @@ from util.functions import get_type_name, is_primitive
 
 from enum import Enum
 from inspect import signature
+from math import floor
 from urllib.parse import quote_plus
+
+from util.serde import int_to_str
 
 text_HTTPMIMETypes = \
 {
@@ -129,6 +132,9 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
     
     return result + '}'
   
+  if isinstance(obj, int):
+    return int_to_str(obj)
+  
   if is_primitive(obj):
     return quote_plus(str(obj))
   
@@ -208,6 +214,9 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
       result += '<%s>%s</%s>' % (xml_key, xml_val, xml_key)
     
     return result
+  
+  if isinstance(obj, int):
+    return int_to_str(obj)
   
   if is_primitive(obj):
     return quote_plus(str(obj))
@@ -309,12 +318,11 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
     
     return result[1:]
   
+  if isinstance(obj, int):
+    return int_to_str(obj)
+  
   if is_primitive(obj):
-    result = str(obj)
-    if isinstance(obj, str):
-      result = quote_plus(result)
-    
-    return result
+    return quote_plus(str(result))
   
   if obj in seen_objs:
     if skip_circular_references:
@@ -504,7 +512,7 @@ def _serialize_by_field_to_plain_text(obj:any, public_only:bool, use_base_field:
   
   return result
 
-def set_response_properties() -> None:
+def set_properties() -> None:
   # monkey patching to avoid circular references, so that i can put models in one file and serde functions in a different file.
   
   def _repr(self:Response) -> str:
@@ -516,7 +524,7 @@ def set_response_properties() -> None:
     return '%s (%s)' % (result, self.get_mime_type())
   Response.__repr__ = _repr
   
-  def _str(self:Response) -> str:
+  def response_str(self:Response) -> str:
     return serialize_response(self, False)
-  Response.__str__ = _str
-set_response_properties()
+  Response.__str__ = response_str
+set_properties()

@@ -1,6 +1,8 @@
 from exceptions.http_base import BadRequestException
 from models.http import HTTPMIMETypes
 
+import math
+
 from json import loads as parse_json
 from json.decoder import JSONDecodeError
 
@@ -34,3 +36,21 @@ def get_dict(raw_text:str, content_type:HTTPMIMETypes) -> dict[str, str]:
     raise BadRequestException(_decode_error % ('YAML', raw_text, str(e)))
   
   raise ValueError('unknown MIME type "%s".' % (content_type.name,))
+
+def int_to_str(value:int) -> str:
+  if not isinstance(value, int):
+    raise TypeError('this only converts integers to strings.')
+  
+  if math.log(value, 10) < 4300:
+    return str(value)
+  
+  result = []
+  i = value
+  while i > 0:
+    result.insert(0, str(i % 10))
+    i = i // 10
+  
+  if value < 0:
+    result.insert(0, '-')
+  
+  return ''.join(result)
