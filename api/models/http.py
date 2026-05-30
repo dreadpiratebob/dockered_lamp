@@ -144,8 +144,11 @@ class HTTPMIMETypes(Enum):
   def __hash__(self) -> int:
     return ((((hash(self.major_type) * 397) ^ hash(self.minor_type) * 397) ^ hash(self.serializer_function_name)) * 397) ^ hash(self.base_structure)
   
+  def __repr__(self) -> str:
+    return 'http mime type (%s)' % (str(self), )
+  
   def __str__(self) -> str:
-    return '%s/%s' % (self.major_type.value, self.minor_type.value)
+    return '%s/%s' % (self.major_type.value, self.minor_type.type_name)
   
   APPLICATION_JSON = 'application/json', 'to_json', '{"data": "%s"}'
   APPLICATION_X_YAML = 'application/x-yaml', 'to_yaml', 'data: %s'

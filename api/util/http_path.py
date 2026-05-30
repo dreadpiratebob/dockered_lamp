@@ -4,8 +4,8 @@ from exceptions.http_base import \
   NotFoundException, \
   AmbiguousPathException, \
   InternalServerError
-from models.http import AvailablePath, HTTPMIMETypes, HTTPRequestMethods
-from util.functions import hash_dict
+from models.http import AvailablePath, HTTPMIMETypes, HTTPRequestMethods, EndpointData
+from util.functions import hash_dict, get_type_name
 
 import re
 
@@ -26,6 +26,7 @@ def path_param_bool_func(not_a_bool_yet: str) -> bool:
   
   raise ValueError('%s couldn\'t be converted to a bool.' % not_a_bool_yet)
 
+_trim_path_for_printing = lambda index_path: index_path[9:len(index_path) - 6].replace('.', '/')
 path_var_type_funcs = {'bool': path_param_bool_func, 'float': float, 'int': int, 'str': str}
 path_param_folder_name_re = re.compile('^__[a-zA-Z_][a-zA-Z0-9_]*__(bool|float|int|str)__$')
 rm_data = None
@@ -99,6 +100,9 @@ class PathNode:
         '  rm_data = the_data\n' \
         'get_data()'
       exec(code)
+      
+      if rm_data is not None and not isinstance(rm_data, EndpointData):
+        raise TypeError('found %s instead of EndpointData for %s %s.' % (get_type_name(rm_data), request_fn_name.upper(), _trim_path_for_printing(index_path)))
       
       self._request_methods[request_method] = rm_data
     
