@@ -1,6 +1,5 @@
 from models.http import HTTPMIMETypes, EndpointData, HTTPStatusCodes, HTTPRequestMethods, Response
 
-
 class AvailablePaths:
   def __init__(self, paths:set):
     self.paths = paths

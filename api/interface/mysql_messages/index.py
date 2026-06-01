@@ -2,7 +2,7 @@ from exceptions.http_base import BadRequestException
 from logic.mysql_messages import get_mysql_messages, save_message
 from models.db import MySQLMessage
 from models.http import AvailablePath, EndpointData, HTTPMIMETypes, HTTPStatusCodes, Response
-from util.interface.mysql_messages import MySQLMessageQueryParams
+from util.service.mysql_messages import MySQLMessageQueryParams
 
 class Messages:
   def __init__(self, messages:list[MySQLMessage]):
