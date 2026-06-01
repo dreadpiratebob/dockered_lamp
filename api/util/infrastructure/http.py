@@ -1,6 +1,6 @@
 from models.http import HTTPMIMETypes, Response
-from util.functions import get_type_name, is_primitive
-from util.serde import int_to_str
+from util.infrastructure.functions import get_type_name, is_primitive
+from util.infrastructure.serde import int_to_str
 
 from enum import Enum
 from inspect import signature

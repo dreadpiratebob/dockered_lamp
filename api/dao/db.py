@@ -1,6 +1,6 @@
 from dao.mysql_utils import get_cursor, MySQLUser
 from models.db import MySQLMessage
-from util.functions import get_type_name
+from util.infrastructure.functions import get_type_name
 
 def get_messages(message_id:int = None, message_content:str = None) -> list[MySQLMessage]:
   grievances = []

@@ -1,4 +1,4 @@
-from util.config import get_config_value
+from util.infrastructure.config import get_config_value
 
 import pymysql
 from enum import Enum

@@ -5,7 +5,7 @@ from exceptions.http_base import \
   AmbiguousPathException, \
   InternalServerError
 from models.http import AvailablePath, HTTPMIMETypes, HTTPRequestMethods, EndpointData
-from util.functions import hash_dict, get_type_name
+from util.infrastructure.functions import hash_dict, get_type_name
 
 import re
 

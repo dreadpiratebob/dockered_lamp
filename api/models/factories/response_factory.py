@@ -1,6 +1,6 @@
 from exceptions.http_base import BaseHTTPException
 from models.http import HTTPMIMETypes, Response, Message, HTTPStatusCodes, HTTPStatusCodes_by_code
-from util.logger import log_exception
+from util.infrastructure.logger import log_exception
 
 
 def build_http_response_from_exception(exception:Exception, mime_type: HTTPMIMETypes = None):

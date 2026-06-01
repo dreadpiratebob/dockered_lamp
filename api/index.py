@@ -10,18 +10,18 @@ sys.path.append(path.realpath(base_path))
 from exceptions.http_base import \
   BadRequestException, \
   MethodNotAllowedException
-from util.logger import get_logger
-from util.http import \
+from util.infrastructure.logger import get_logger
+from util.infrastructure.http import \
   default_text_HTTPMIMEType, \
   text_HTTPMIMETypes, get_response_payload_as_bytes
 from models.factories.response_factory import build_http_response_from_exception
 from models.http import MajorHTTPMIMETypes, HTTPMIMETypes, HTTPHeaders, HTTPStatusCodes, HTTPRequestMethods, \
   HTTPRequestMethods_by_name, Message, Response
-from util.http_path import \
+from util.infrastructure.http_path import \
   get_and_validate_rel_path, \
   default_interface_dir, \
   path_tries
-from util.functions import get_type_name
+from util.infrastructure.functions import get_type_name
 
 from inspect import signature
 from types import GeneratorType

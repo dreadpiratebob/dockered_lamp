@@ -1,5 +1,5 @@
-from util.functions import get_type_name
-from util.logger import get_logger
+from util.infrastructure.functions import get_type_name
+from util.infrastructure.logger import get_logger
 
 import os.path
 
