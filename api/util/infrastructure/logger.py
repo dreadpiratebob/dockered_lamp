@@ -7,7 +7,7 @@ import os.path
 
 from enum import Enum
 
-_service_name = environ.get('SERVICE_NAME', '../service')
+_service_name = environ.get('SERVICE_NAME', 'service')
 _log_dir = '/var/log/%s/' % (_service_name, )
 
 class LogLevel(Enum):

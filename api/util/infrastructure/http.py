@@ -130,7 +130,7 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
     
     return result + '}'
   
-  if isinstance(obj, int):
+  if isinstance(obj, int) and not isinstance(obj, bool):
     return int_to_str(obj)
   
   if is_primitive(obj):
@@ -213,7 +213,7 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
     
     return result
   
-  if isinstance(obj, int):
+  if isinstance(obj, int) and not isinstance(obj, bool):
     return int_to_str(obj)
   
   if is_primitive(obj):
@@ -316,7 +316,7 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
     
     return result[1:]
   
-  if isinstance(obj, int):
+  if isinstance(obj, int) and not isinstance(obj, bool):
     return int_to_str(obj)
   
   if is_primitive(obj):

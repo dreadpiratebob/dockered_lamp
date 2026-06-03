@@ -9,7 +9,7 @@ from json.decoder import JSONDecodeError
 from xmltodict import parse as parse_xml
 from xml.parsers.expat import ExpatError as XMLDecoderError
 
-from yaml import load as parse_yaml, SafeLoader, FullLoader
+from yaml import load as parse_yaml, FullLoader
 from yaml.scanner import ScannerError as YAMLDecoderError
 
 _raw_text_error = 'text to deserialize must be a string.'
@@ -41,6 +41,7 @@ def int_to_str(value:int) -> str:
   if not isinstance(value, int):
     raise TypeError('this only converts integers to strings.')
   
+  print('value: %s' % (value, ))
   if math.log(value, 10) < 4300:
     return str(value)
   
