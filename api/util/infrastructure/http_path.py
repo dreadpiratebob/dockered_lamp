@@ -5,15 +5,12 @@ from exceptions.http_base import \
   AmbiguousPathException, \
   InternalServerError
 from models.http import AvailablePath, HTTPMIMETypes, HTTPRequestMethods, EndpointData
+from util.infrastructure.config import base_api_path
 from util.infrastructure.functions import hash_dict, get_type_name
 
 import re
 
 from os import listdir, path
-
-base_path = path.dirname(__file__).replace('\\', '/')
-if len(base_path) > 0 and base_path.rfind('/') > -1:
-  base_path = base_path[:base_path.rfind('/')]
 
 def path_param_bool_func(not_a_bool_yet: str) -> bool:
   not_a_bool_yet = not_a_bool_yet.lower()
@@ -281,7 +278,7 @@ def get_path_trie(start_path:str = default_interface_dir) -> PathNode:
   if start_path[-1] == '/':
     start_path = start_path[:-1]
   
-  base_folder = base_path
+  base_folder = base_api_path
   if base_folder[-1] == '/':
     base_folder = base_folder[:-1]
   
@@ -295,7 +292,7 @@ def get_path_trie(start_path:str = default_interface_dir) -> PathNode:
       if subdir == '__pycache__' or not path.isdir(base_folder + current_node.get_raw_path() + '/' + subdir):
         continue
       
-      child_node = PathNode(current_node, base_path + current_node.get_raw_path(), subdir)
+      child_node = PathNode(current_node, base_api_path + current_node.get_raw_path(), subdir)
       current_node += child_node
       nodes_to_process.append(child_node)
   
@@ -434,7 +431,7 @@ def get_and_validate_rel_path(environment:dict, start_path:str = default_interfa
     if path_data.error_message is not None:
       raise BadRequestException(path_data.error_message)
     
-    if not path.exists(base_path + path_data.path_node.get_raw_path() + end_path):
+    if not path.exists(base_api_path + path_data.path_node.get_raw_path() + end_path):
       raise NotFoundException(rel_path_not_found_error % (rel_path,))
     
     return path_data
@@ -444,7 +441,7 @@ def get_and_validate_rel_path(environment:dict, start_path:str = default_interfa
   for path_data in old_paths:
     if path_data.error_message is not None:
       bad_path_param_paths.add(path_data)
-    elif path.exists(base_path + path_data.path_node.get_raw_path() + end_path):
+    elif path.exists(base_api_path + path_data.path_node.get_raw_path() + end_path):
       good_paths.add(path_data)
   
   if len(good_paths) == 0:

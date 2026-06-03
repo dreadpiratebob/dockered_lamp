@@ -1,7 +1,19 @@
 from util.infrastructure.functions import get_type_name
 from util.infrastructure.logger import get_logger
 
-import os.path
+from os import path
+
+def _get_base_api_path() -> str:
+  base_path = path.dirname(__file__).replace('\\', '/')
+  
+  if len(base_path) > 0 and base_path.rfind('/') > -1:
+    base_path = base_path[:base_path.rfind('/')]
+  
+  if len(base_path) > 0 and base_path.rfind('/') > -1:
+    base_path = base_path[:base_path.rfind('/')]
+  
+  return base_path
+base_api_path = _get_base_api_path()
 
 _config = dict()
 
@@ -11,12 +23,8 @@ def load_config(config_name:str = 'main'):
   if not isinstance(config_name, str):
     raise TypeError('a config name must be a string.  (found a %s instead: "%s")' % (get_type_name(config_name), str(config_name)))
   
-  base_filename = os.path.dirname(__file__)
-  if base_filename[-1] != '/':
-    base_filename = '%s/' % (base_filename, )
-  
-  full_filename = '%s../config/%s%s' % (base_filename, config_name, config_file_extension)
-  if not os.path.exists(full_filename):
+  full_filename = '%s/config/%s%s' % (base_api_path, config_name, config_file_extension)
+  if not path.exists(full_filename):
     raise ValueError('no config called "%s" exists.  (looking in "%s".)' % (config_name, full_filename))
   
   global _config
