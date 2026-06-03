@@ -41,7 +41,6 @@ def int_to_str(value:int) -> str:
   if not isinstance(value, int):
     raise TypeError('this only converts integers to strings.')
   
-  print('value: %s' % (value, ))
   if math.log(value, 10) < 4300:
     return str(value)
   
