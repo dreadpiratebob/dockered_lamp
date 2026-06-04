@@ -97,8 +97,14 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
   if isinstance(obj, bool):
     return 'true' if obj else 'false'
   
+  if isinstance(obj, int):
+    return int_to_str(obj)
+  
   if isinstance(obj, str):
     return '"%s"' % (quote_plus(obj), )
+  
+  if is_primitive(obj):
+    return quote_plus(str(obj))
   
   if isinstance(obj, (list, set, tuple)):
     result = '['
@@ -129,12 +135,6 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
       result += '"%s": %s' % (quote_plus(str(key)), json_val)
     
     return result + '}'
-  
-  if isinstance(obj, int) and not isinstance(obj, bool):
-    return int_to_str(obj)
-  
-  if is_primitive(obj):
-    return quote_plus(str(obj))
   
   if seen_objs is None:
     seen_objs = list()
@@ -188,6 +188,15 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
   if isinstance(obj, Enum):
     obj = obj.value
   
+  if isinstance(obj, bool):
+    return 'true' if obj else 'false'
+  
+  if isinstance(obj, int):
+    return int_to_str(obj)
+  
+  if is_primitive(obj):
+    return quote_plus(str(obj))
+  
   if isinstance(obj, (list, set, tuple)):
     result = ''
     
@@ -212,12 +221,6 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
       result += '<%s>%s</%s>' % (xml_key, xml_val, xml_key)
     
     return result
-  
-  if isinstance(obj, int) and not isinstance(obj, bool):
-    return int_to_str(obj)
-  
-  if is_primitive(obj):
-    return quote_plus(str(obj))
   
   if seen_objs is None:
     seen_objs = list()
@@ -283,6 +286,18 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
   if isinstance(obj, str):
     return '"%s"' % (quote_plus(obj))
   
+  if isinstance(obj, bool):
+    return 'true' if obj else 'false'
+  
+  if isinstance(obj, int):
+    return int_to_str(obj)
+  
+  if isinstance(obj, str):
+    return '"%s"' % (quote_plus(obj), )
+  
+  if is_primitive(obj):
+    return quote_plus(str(result))
+  
   if isinstance(obj, (list, set, tuple)):
     result = ''
     serd_start = '\n%s- ' % (yaml_indent * indent,)
@@ -315,12 +330,6 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       result += '\n%s%s: %s' % (yaml_indent*indent, yaml_key, yaml_val)
     
     return result[1:]
-  
-  if isinstance(obj, int) and not isinstance(obj, bool):
-    return int_to_str(obj)
-  
-  if is_primitive(obj):
-    return quote_plus(str(result))
   
   if obj in seen_objs:
     if skip_circular_references:
