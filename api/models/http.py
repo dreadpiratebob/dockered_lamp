@@ -68,6 +68,9 @@ class AvailablePath:
     
     return result
   
+  def __repr__(self) -> str:
+    return 'available path (%s)' % (str(self), )
+  
   def __str__(self) -> str:
     result = '%s %s' % (self.request_method, self.path)
     
@@ -181,6 +184,15 @@ class EndpointData:
     self.help = endpoint_help
     self.allowed_content_types = allowed_content_types
     self.default_content_type = default_content_type
+  
+  def __repr__(self) -> str:
+    return 'endpoint data (%s)' % (str(self), )
+  
+  def __str__(self) -> str:
+    if self.help is None:
+      return 'unavailable endpoint'
+    
+    return '%s %s' % (self.help.request_method, self.help.path)
 
 class HTTPRange:
   def __init__(self, unit:str, ranges:list[tuple[int, int]]) -> None:

@@ -77,7 +77,8 @@ class PathNode:
         parent.add_child(self)
       return
     
-    index_path = (self.get_raw_path()[1:] + '/index.py').replace('/', '.')[:-3]
+    endpoint_path = self.get_raw_path()[1:]
+    index_path = (endpoint_path + '/index').replace('/', '.')
     for request_method in HTTPRequestMethods:
       # this has to use a global variable because "exec" doesn't work on locals.  this seems very thread-unsafe.
       request_fn_name = str(request_method)
@@ -98,8 +99,15 @@ class PathNode:
         'get_data()'
       exec(code)
       
-      if rm_data is not None and not isinstance(rm_data, EndpointData):
-        raise TypeError('found %s instead of EndpointData for %s %s.' % (get_type_name(rm_data), request_fn_name.upper(), _trim_path_for_printing(index_path)))
+      if rm_data is not None:
+        if isinstance(rm_data, EndpointData):
+          if rm_data.help is not None:
+            if rm_data.help.request_method is None:
+              rm_data.help.request_method = str(request_method).upper()
+            if rm_data.help.path is None:
+              rm_data.help.path = endpoint_path
+        else:
+          raise TypeError('found %s instead of EndpointData for %s %s.' % (get_type_name(rm_data), request_fn_name.upper(), _trim_path_for_printing(index_path)))
       
       self._request_methods[request_method] = rm_data
     

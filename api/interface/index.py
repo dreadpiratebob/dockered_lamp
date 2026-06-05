@@ -4,6 +4,9 @@ class AvailablePaths:
   def __init__(self, paths:set):
     self.paths = paths
   
+  def __repr__(self):
+    return 'available paths (%s)' % (str(self), )
+  
   def __str__(self):
     return str(self.paths)
 

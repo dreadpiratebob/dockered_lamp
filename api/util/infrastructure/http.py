@@ -41,7 +41,6 @@ def serialize_response(response:Response, fail_on_missing_mime_type:bool = True)
   serializer_function_name = response.get_mime_type().serializer_function_name
   if serializer_function_name is not None and hasattr(response.payload, serializer_function_name):
     serializer_function = getattr(response.payload, serializer_function_name)
-    
     if callable(serializer_function) and len(signature(serializer_function).parameters) == 1:
       result = serializer_function(response.payload)
   elif response.serialization_falls_back_to_fields():
@@ -103,9 +102,6 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
   if isinstance(obj, str):
     return '"%s"' % (quote_plus(obj), )
   
-  if is_primitive(obj):
-    return quote_plus(str(obj))
-  
   if isinstance(obj, (list, set, tuple)):
     result = '['
     
@@ -135,6 +131,9 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
       result += '"%s": %s' % (quote_plus(str(key)), json_val)
     
     return result + '}'
+  
+  if is_primitive(obj):
+    return quote_plus(str(obj))
   
   if seen_objs is None:
     seen_objs = list()
@@ -194,9 +193,6 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
   if isinstance(obj, int):
     return int_to_str(obj)
   
-  if is_primitive(obj):
-    return quote_plus(str(obj))
-  
   if isinstance(obj, (list, set, tuple)):
     result = ''
     
@@ -221,6 +217,9 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
       result += '<%s>%s</%s>' % (xml_key, xml_val, xml_key)
     
     return result
+  
+  if is_primitive(obj):
+    return quote_plus(str(obj))
   
   if seen_objs is None:
     seen_objs = list()
@@ -283,9 +282,6 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       return None
     return 'null'
   
-  if isinstance(obj, str):
-    return '"%s"' % (quote_plus(obj))
-  
   if isinstance(obj, bool):
     return 'true' if obj else 'false'
   
@@ -295,9 +291,6 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
   if isinstance(obj, str):
     return '"%s"' % (quote_plus(obj), )
   
-  if is_primitive(obj):
-    return quote_plus(str(result))
-  
   if isinstance(obj, (list, set, tuple)):
     result = ''
     serd_start = '\n%s- ' % (yaml_indent * indent,)
@@ -306,7 +299,6 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
         continue
       
       yaml_val = _serialize_by_field_to_yaml(item, public_only, use_base_field, indent + 1, skip_null_values, skip_circular_references, seen_objs)
-      
       if yaml_val is None:
         continue
       
@@ -330,6 +322,9 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       result += '\n%s%s: %s' % (yaml_indent*indent, yaml_key, yaml_val)
     
     return result[1:]
+  
+  if is_primitive(obj):
+    return quote_plus(str(result))
   
   if obj in seen_objs:
     if skip_circular_references:
