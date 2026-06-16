@@ -102,13 +102,11 @@ class PathNode:
       if rm_data is not None:
         if isinstance(rm_data, EndpointData):
           if rm_data.help is not None:
-            
             if rm_data.help.request_method is None:
               rm_data.help.request_method = str(request_method).upper()
-            
             if rm_data.help.path is None:
               rm_data.help.path = endpoint_path[endpoint_path.find('/'):]
-        else: # wrong data type for the endpoint data.
+        else:
           raise TypeError('found %s instead of EndpointData for %s %s.' % (get_type_name(rm_data), request_fn_name.upper(), _trim_path_for_printing(index_path)))
       
       self._request_methods[request_method] = rm_data

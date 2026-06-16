@@ -302,10 +302,7 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       if yaml_val is None:
         continue
       
-      while len(yaml_val) > 0 and yaml_val[0] == ' ':
-        yaml_val = yaml_val[1:]
-      
-      result += serd_start + yaml_val
+      result += '%s%s' % (serd_start, yaml_val.lstrip(' \n'))
     return result
   
   if isinstance(obj, dict):
@@ -371,8 +368,7 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
     
     result += '\n%s%s:%s' % (yaml_indent*indent, new_name, field_value)
   
-  while len(result) > 0 and result[0] == '\n':
-    result = result[1:]
+  result.lstrip('\n')
   
   return result
 

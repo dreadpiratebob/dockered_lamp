@@ -38,7 +38,7 @@ _diacritic_removal_special_cases = \
   '': ''
 }
 def get_search_text_from_raw_text(input_text:str) -> tuple[str, str, str]:
-  raw_text = '' + input_text
+  raw_text = '%s' % (input_text, )
   lcase = raw_text.lower()
   
   if raw_text in _diacritic_removal_special_cases:
