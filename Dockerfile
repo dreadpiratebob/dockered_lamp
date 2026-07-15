@@ -1,6 +1,6 @@
 FROM debian:bullseye-slim
 
-LABEL image.author = "poseidon.guy@gmail.com"
+LABEL image.author="poseidon.guy@gmail.com"
 
 RUN apt update && \
     apt install -y \

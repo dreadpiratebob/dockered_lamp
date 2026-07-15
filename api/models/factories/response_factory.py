@@ -3,7 +3,7 @@ from models.http import HTTPMIMETypes, Response, Message, HTTPStatusCodes, HTTPS
 from util.infrastructure.logger import log_exception
 
 
-def build_http_response_from_exception(exception:Exception, mime_type: HTTPMIMETypes = None):
+def build_http_response_from_exception(exception:Exception, mime_type:HTTPMIMETypes = None):
   grievances = []
   
   if not isinstance(exception, Exception):

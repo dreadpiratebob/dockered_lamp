@@ -211,7 +211,7 @@ def application(environment, start_response):
     
     get_logger().debug(message)
     
-    response = build_http_response_from_exception(e)
+    response = build_http_response_from_exception(e, headers[HTTPHeaders.ACCEPT])
     if headers[HTTPHeaders.ACCEPT] not in text_HTTPMIMETypes:
       response.set_mime_type(default_text_HTTPMIMEType)
   
