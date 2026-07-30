@@ -13,7 +13,7 @@
 #
 #if [[ "$success" != "1" ]]
 #then
-#  echo "qutting due to previous errors."
+#  echo "quitting due to previous errors."
 #  exit 1
 #fi
 
