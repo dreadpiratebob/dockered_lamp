@@ -54,6 +54,29 @@ def serialize_response(response:Response, fail_on_missing_mime_type:bool = True)
   
   return result
 
+def _get_enum_value(value:Enum) -> any:
+  if not isinstance(value, Enum):
+    raise TypeError('expected an enum.')
+  
+  if not isinstance(value.value, tuple):
+    return value.value
+  
+  class EnumContents:
+    def __init__(self, enum_value:Enum) -> None:
+      for field in enum_value.__dict__:
+        if field in ('_value_', '_name_', '__objclass__'):
+          continue
+        
+        self.__dict__[field] = value.__dict__[field]
+    
+    def __getitem__(self, key:str) -> any:
+      return self.__dict__[key]
+    
+    def __setitem__(self, key:str, val:any) -> None:
+      self.__dict__[key] = val
+  
+  return EnumContents(value)
+
 # there's probly a better way to do this.  i kinda want generics.
 _response_serializers_by_mime_type = \
 {
@@ -91,7 +114,7 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
     return 'null'
   
   if isinstance(obj, Enum):
-    obj = obj.value
+    obj = _get_enum_value(obj)
   
   if isinstance(obj, bool):
     return 'true' if obj else 'false'
@@ -185,7 +208,7 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
     return 'null'
   
   if isinstance(obj, Enum):
-    obj = obj.value
+    obj = _get_enum_value(obj)
   
   if isinstance(obj, bool):
     return 'true' if obj else 'false'
@@ -282,6 +305,9 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       return None
     return 'null'
   
+  if isinstance(obj, Enum):
+    obj = _get_enum_value(obj)
+  
   if isinstance(obj, bool):
     return 'true' if obj else 'false'
   
@@ -314,7 +340,6 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       yaml_val = _serialize_by_field_to_yaml(obj[key], public_only, use_base_field, indent + 1, skip_null_values, skip_circular_references, seen_objs)
       if yaml_val is None:
         continue
-      
       yaml_key = quote_plus(str(key))
       result += '\n%s%s: %s' % (yaml_indent*indent, yaml_key, yaml_val)
     
@@ -343,8 +368,6 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
       continue
     
     raw_field_value = fields[field_name]
-    if isinstance(raw_field_value, Enum):
-      raw_field_value = raw_field_value.value
     
     field_value = _serialize_by_field_to_yaml(raw_field_value, public_only, use_base_field, indent + 1, skip_null_values, skip_circular_references, seen_objs + [obj])
     if field_value is None:
@@ -389,7 +412,7 @@ def _serialize_by_field_to_plain_text(obj:any, public_only:bool, use_base_field:
     return 'null'
   
   if isinstance(obj, Enum):
-    obj = obj.value
+    obj = _get_enum_value(obj)
   
   if isinstance(obj, str):
     return '"' + quote_plus(str(obj)) + '"'
