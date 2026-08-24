@@ -4,7 +4,7 @@ from util.infrastructure.functions import get_type_name, hash_dict, hash_list_or
 from enum import Enum
 from types import FunctionType
 
-class AvailablePath:
+class EndpointHelp:
   def __init__(self, request_method:str = None, path:str = None, query_params:(list, tuple) = None, path_params:(list, tuple) = None, expected_body:str = None, description:str = None):
     grievances = []
     
@@ -68,9 +68,6 @@ class AvailablePath:
     
     return result
   
-  def __repr__(self) -> str:
-    return 'available path (%s)' % (str(self), )
-  
   def __str__(self) -> str:
     result = '%s %s' % (self.request_method, self.path)
     
@@ -90,17 +87,6 @@ class MinorHTTPMIMETypes(Enum):
   def __init__(self, name:str, parent:MajorHTTPMIMETypes):
     self.type_name = name
     self.parent = parent
-  
-  def __eq__(self, other) -> bool:
-    return isinstance(other, type(self)) and \
-      self.type_name == other.type_name and \
-      self.parent == other.parent
-  
-  def __ne__(self, other) -> bool:
-    return not self.__eq__(other)
-  
-  def __hash__(self) -> int:
-    return hash((self.type_name, self.parent))
   
   def __repr__(self) -> str:
     return str(self)
@@ -134,19 +120,6 @@ class HTTPMIMETypes(Enum):
     self.serializer_function_name = serializer_function_name
     self.base_structure = base_structure
   
-  def __eq__(self, other) -> bool:
-    return isinstance(other, HTTPMIMETypes) and \
-      self.major_type == other.major_type and \
-      self.minor_type == other.minor_type and \
-      self.serializer_function_name == other.serializer_function_name and \
-      self.base_structure == other.base_structure
-  
-  def __ne__(self, other) -> bool:
-    return not self.__eq__(other)
-  
-  def __hash__(self) -> int:
-    return ((((hash(self.major_type) * 397) ^ hash(self.minor_type) * 397) ^ hash(self.serializer_function_name)) * 397) ^ hash(self.base_structure)
-  
   def __repr__(self) -> str:
     return 'http mime type (%s)' % (str(self), )
   
@@ -165,7 +138,7 @@ class HTTPMIMETypes(Enum):
 HTTPMIMETypes_by_name = {str(x): x for x in HTTPMIMETypes}
 
 class EndpointData:
-  def __init__(self, func:callable, endpoint_help:AvailablePath, allowed_content_types:set[HTTPMIMETypes], default_content_type:HTTPMIMETypes):
+  def __init__(self, func:callable, endpoint_help:EndpointHelp, allowed_content_types:set[HTTPMIMETypes], default_content_type:HTTPMIMETypes):
     missing_data = []
     
     if func is None:
@@ -184,15 +157,6 @@ class EndpointData:
     self.help = endpoint_help
     self.allowed_content_types = allowed_content_types
     self.default_content_type = default_content_type
-  
-  def __repr__(self) -> str:
-    return 'endpoint data (%s)' % (str(self), )
-  
-  def __str__(self) -> str:
-    if self.help is None:
-      return 'unavailable endpoint'
-    
-    return '%s %s' % (self.help.request_method, self.help.path)
 
 class HTTPRange:
   def __init__(self, unit:str, ranges:list[tuple[int, int]]) -> None:
@@ -282,20 +246,22 @@ class PathParams(Enum):
 def get_param(key:str, params:dict, parser:callable, type_name:str, required:bool = False, param_type:str = 'query', default_value:any=None, return_error_message:bool = False) -> any:
   if key not in params:
     if required:
+      error_message = 'the %s parameter called "%s" is required and was missing.' % (param_type, key)
       if return_error_message:
-        return default_value, BadRequestException('the %s parameter called "%s" is required and was missing.' % (param_type, key))
+        return default_value, error_message
       else:
-        raise BadRequestException('the %s parameter called "%s" is required and was missing.' % (param_type, key))
+        raise BadRequestException(error_message)
     
     return default_value, None
   
   try:
     return parser(params[key]), None
   except ValueError:
+    error_message = 'the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name)
     if return_error_message:
-      return default_value, BadRequestException('the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name))
+      return default_value, error_message
     else:
-      raise BadRequestException('the %s "%s" couldn\'t be parsed as %s.' % (key, params[key], type_name))
+      raise BadRequestException(error_message)
 
 _bearer_prefix = 'Bearer '
 def get_authorization_header_value(value:str) -> str:
@@ -414,7 +380,7 @@ class HTTPHeaders(Enum):
     
     return self.default_value()
   
-  def default_value(self) -> str:
+  def default_value(self):
     return self._default_value
   
   ACCEPT = 'accept', {'HTTP_ACCEPT'}, lambda value: HTTPMIMETypes_by_name.get(value, HTTPMIMETypes.APPLICATION_YAML), HTTPMIMETypes.APPLICATION_YAML

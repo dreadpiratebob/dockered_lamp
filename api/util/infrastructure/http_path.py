@@ -4,7 +4,7 @@ from exceptions.http_base import \
   NotFoundException, \
   AmbiguousPathException, \
   InternalServerError
-from models.http import AvailablePath, HTTPMIMETypes, HTTPRequestMethods, EndpointData
+from models.http import EndpointHelp, HTTPMIMETypes, HTTPRequestMethods, EndpointData
 from util.infrastructure.config import base_api_path
 from util.infrastructure.functions import hash_dict, get_type_name
 
@@ -150,6 +150,9 @@ class PathNode:
   def __iter__(self):
     return self.get_children().__iter__()
   
+  def __repr__(self) -> str:
+    return 'pathnode(%s)' % (str(self), )
+  
   def __str__(self) -> str:
     return self.get_pretty_path()
   
@@ -218,7 +221,7 @@ class PathNode:
     
     return rm.func
   
-  def get_request_method_help(self, request_method:HTTPRequestMethods) -> AvailablePath:
+  def get_request_method_help(self, request_method:HTTPRequestMethods) -> EndpointHelp:
     rm = self._request_methods.get(request_method, None)
     
     if rm is None:

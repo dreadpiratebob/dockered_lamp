@@ -54,17 +54,18 @@ def serialize_response(response:Response, fail_on_missing_mime_type:bool = True)
   
   return result
 
+_skip_enum_fields = ('_value_', '_name_', '__objclass__')
 def _get_enum_value(value:Enum) -> any:
   if not isinstance(value, Enum):
     raise TypeError('expected an enum.')
   
-  if not isinstance(value.value, tuple):
+  if tuple(value.__dict__.keys()) == _skip_enum_fields:
     return value.value
   
   class EnumContents:
     def __init__(self, enum_value:Enum) -> None:
       for field in enum_value.__dict__:
-        if field in ('_value_', '_name_', '__objclass__'):
+        if field in _skip_enum_fields:
           continue
         
         self.__dict__[field] = value.__dict__[field]
@@ -155,7 +156,7 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
     
     return result + '}'
   
-  if is_primitive(obj):
+  if not hasattr(obj, '__dict__'):
     return quote_plus(str(obj))
   
   if seen_objs is None:
@@ -177,11 +178,14 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
     if skip_null_values and fields[field_name] is None:
       continue
     
+    if public_only and field_name.startswith('_'):
+      continue
+    
+    if field_name.startswith('__') and field_name.endswith('__'):
+      continue
+    
     new_name = str(field_name)
-    if new_name[0] == '_':
-      if public_only:
-        continue
-      
+    if new_name.startswith('_'):
       new_name = new_name[1:]
     
     if new_name is None:
@@ -193,9 +197,9 @@ def _serialize_by_field_to_json(obj:any, public_only:bool, skip_null_values:bool
     if serialized_value is None:
       serialized_value = '"%s"' % (circular_reference_text, )
     
-    json_fields.append('"' + new_name + '": ' + serialized_value)
+    json_fields.append('"%s": %s' % (new_name, serialized_value))
   
-  return '{' + ', '.join(json_fields) + '}'
+  return '{%s}' % (', '.join(json_fields), )
 
 def serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:bool = False, skip_null_values:bool = True, skip_circular_references:bool = True) -> str:
   return _serialize_by_field_to_xml(obj, public_only, use_base_field, skip_null_values, skip_circular_references)
@@ -241,7 +245,7 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
     
     return result
   
-  if is_primitive(obj):
+  if not hasattr(obj, '__dict__'):
     return quote_plus(str(obj))
   
   if seen_objs is None:
@@ -267,11 +271,14 @@ def _serialize_by_field_to_xml(obj:any, public_only:bool = True, use_base_field:
     if skip_null_values and fields[field_name] is None:
       continue
     
+    if public_only and field_name.startswith('_'):
+      continue
+    
+    if field_name.startswith('__') and field_name.endswith('__'):
+      continue
+    
     new_name = str(field_name)
-    if new_name[0] == '_':
-      if public_only:
-        continue
-      
+    if new_name.startswith('_'):
       new_name = new_name[1:]
     
     xml_val = _serialize_by_field_to_xml(fields[field_name], public_only, use_base_field, skip_null_values, skip_circular_references, seen_objs + [obj])
@@ -345,7 +352,7 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
     
     return result[1:]
   
-  if is_primitive(obj):
+  if not hasattr(obj, '__dict__'):
     return quote_plus(str(result))
   
   if obj in seen_objs:
@@ -367,24 +374,29 @@ def _serialize_by_field_to_yaml(obj:any, public_only:bool, use_base_field:bool, 
     if skip_null_values and fields[field_name] is None:
       continue
     
+    if public_only and field_name.startswith('_'):
+      continue
+    
+    if field_name.startswith('__') and field_name.endswith('__'):
+      continue
+    
     raw_field_value = fields[field_name]
     
     field_value = _serialize_by_field_to_yaml(raw_field_value, public_only, use_base_field, indent + 1, skip_null_values, skip_circular_references, seen_objs + [obj])
     if field_value is None:
       continue
     elif len(field_value) > 0:
-      if field_value == '"%s"' % (circular_reference_text, ) or (is_primitive(raw_field_value) and not isinstance(raw_field_value, (dict, list, set, tuple))):
-        while field_value[0] == '\n':
-          field_value = field_value[1:]
-        field_value = ' ' + field_value
+      field_value = field_value.lstrip('\n')
+      if isinstance(raw_field_value, Enum):
+        raw_field_value = _get_enum_value(raw_field_value)
+      
+      if field_value == '"%s"' % (circular_reference_text, ) or is_primitive(raw_field_value):
+        field_value = ' %s' % (field_value, )
       elif field_value[0] != '\n':
         field_value = '\n%s' % (field_value, )
     
     new_name = str(field_name)
-    if new_name[0] == '_':
-      if public_only:
-        continue
-      
+    if new_name.startswith('_'):
       new_name = new_name[1:]
     
     new_name = quote_plus(new_name)
@@ -485,7 +497,7 @@ def _serialize_by_field_to_plain_text(obj:any, public_only:bool, use_base_field:
     
     return '%s\n%s%s' % (result, last_indent, '}')
   
-  if is_primitive(obj):
+  if not hasattr(obj, '__dict__'):
     return quote_plus(str(obj))
   
   if seen_objs is None:
@@ -509,11 +521,14 @@ def _serialize_by_field_to_plain_text(obj:any, public_only:bool, use_base_field:
     if skip_null_values and fields[field_name] is None:
       continue
     
+    if public_only and field_name.startswith('_'):
+      continue
+    
+    if field_name.startswith('__') and field_name.endswith('__'):
+      continue
+    
     new_name = str(field_name)
-    if new_name[0] == '_':
-      if public_only:
-        continue
-      
+    if new_name.startswith('_'):
       new_name = new_name[1:]
     
     text_val = _serialize_by_field_to_plain_text(fields[field_name], public_only, use_base_field, indent + 1, skip_null_values, skip_circular_references, seen_objs + [obj])

@@ -38,6 +38,11 @@ _diacritic_removal_special_cases = \
   '': ''
 }
 def get_search_text_from_raw_text(input_text:str) -> tuple[str, str, str]:
+  if input_text is None:
+    return None, None, None
+  elif not isinstance(input_text, str):
+    raise TypeError('search text must be a string.')
+  
   raw_text = '%s' % (input_text, )
   lcase = raw_text.lower()
   
@@ -99,7 +104,8 @@ def hash_list_or_tuple(obj:[list, tuple]) -> int:
   return result
 
 def is_primitive(obj:any) -> bool:
-  return not hasattr(obj, '__dict__')
+  # return not hasattr(obj, '__dict__')
+  return isinstance(obj, (bool, int, float, str))
 
 def parse_bool(obj:any, throw_on_failure:bool = True, default_value:bool = False) -> bool:
   if isinstance(obj, bool):

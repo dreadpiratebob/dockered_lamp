@@ -172,7 +172,7 @@ def get_order_clause(order_bys:[list[OrderByCol], tuple[OrderByCol]]) -> str:
   if len(order_bys) == 0:
     return ''
   
-  return 'ORDER BY %s' % ('\n'.join(['%s%s %s' % ('' if ob.col.table_name is None else (ob.col.table_name + '.'), ob.col.column_name, ob.direction.value) for ob in order_bys]), )
+  return 'ORDER BY %s\n' % ('\n'.join(['%s%s %s' % ('' if ob.col.table_name is None else (ob.col.table_name + '.'), ob.col.column_name, ob.direction.value) for ob in order_bys]), )
 
 def is_valid_order_by(order_by:any, subclass:type) -> bool:
   if order_by is None:
