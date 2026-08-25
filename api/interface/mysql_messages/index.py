@@ -1,7 +1,7 @@
 from exceptions.http_base import BadRequestException
 from logic.mysql_messages import get_mysql_messages, save_message
 from models.db import MySQLMessage
-from models.http import AvailablePath, EndpointData, HTTPMIMETypes, HTTPStatusCodes, Response
+from models.http import EndpointData, EndpointHelp, HTTPMIMETypes, HTTPStatusCodes, Response
 from util.service.mysql_messages import MySQLMessageQueryParams
 
 class Messages:
@@ -26,7 +26,7 @@ def _get(environment:dict, headers:dict, path_params:dict, query_params:dict, bo
 get = EndpointData \
 (
   _get,
-  AvailablePath(query_params = (MySQLMessageQueryParams.CONTENT_FILTER, ), description = ''),
+  EndpointHelp(query_params = (MySQLMessageQueryParams.CONTENT_FILTER, ), description = ''),
   {HTTPMIMETypes.APPLICATION_JSON, HTTPMIMETypes.APPLICATION_XML, HTTPMIMETypes.APPLICATION_X_YAML, HTTPMIMETypes.APPLICATION_YAML},
   HTTPMIMETypes.APPLICATION_YAML
 )
@@ -46,7 +46,7 @@ def _post(environment:dict, headers:dict, path_params:dict, query_params:dict, b
 post = EndpointData \
 (
   _post,
-  AvailablePath(expected_body='the raw contents of the message to save.', description = 'this stores the request body as a message, gives it an id and then returns both the id and contents in the response body.'),
+  EndpointHelp(expected_body='the raw contents of the message to save.', description = 'this stores the request body as a message, gives it an id and then returns both the id and contents in the response body.'),
   {HTTPMIMETypes.APPLICATION_JSON, HTTPMIMETypes.APPLICATION_XML, HTTPMIMETypes.APPLICATION_X_YAML, HTTPMIMETypes.APPLICATION_YAML},
   HTTPMIMETypes.APPLICATION_YAML
 )

@@ -1,6 +1,6 @@
 from exceptions.http_base import BadRequestException
 from logic.fibonacci import get_nth_fibonacci_number
-from models.http import AvailablePath, HTTPMIMETypes, EndpointData, HTTPStatusCodes, Response
+from models.http import EndpointHelp, HTTPMIMETypes, EndpointData, HTTPStatusCodes, Response
 from util.service.fibonacci import FibonacciPathParams
 
 class Result:
@@ -19,7 +19,7 @@ def _get(environment:dict, headers:dict, path_params:dict, query_params:dict, bo
 get = EndpointData \
 (
   _get,
-  AvailablePath(description='this endpoint calculates and returns the nth fibonacci number.'),
+  EndpointHelp(description='this endpoint calculates and returns the nth fibonacci number.'),
   { HTTPMIMETypes.APPLICATION_JSON, HTTPMIMETypes.APPLICATION_XML, HTTPMIMETypes.APPLICATION_X_YAML, HTTPMIMETypes.APPLICATION_YAML },
   HTTPMIMETypes.APPLICATION_YAML
 )

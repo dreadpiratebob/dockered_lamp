@@ -4,19 +4,21 @@ import sys
 
 from setuptools.package_index import user_agent
 
+from models.environment import EnvironmentKeys
+
 base_path = path.dirname(__file__)
 sys.path.append(path.realpath(base_path))
 
 from exceptions.http_base import \
   BadRequestException, \
   MethodNotAllowedException
+from models.factories.response_factory import build_http_response_from_exception
+from models.http import MajorHTTPMIMETypes, HTTPMIMETypes, HTTPHeaders, HTTPStatusCodes, HTTPRequestMethods, \
+  HTTPRequestMethods_by_name, Message, Response
 from util.infrastructure.logger import get_logger
 from util.infrastructure.http import \
   default_text_HTTPMIMEType, \
   text_HTTPMIMETypes, get_response_payload_as_bytes
-from models.factories.response_factory import build_http_response_from_exception
-from models.http import MajorHTTPMIMETypes, HTTPMIMETypes, HTTPHeaders, HTTPStatusCodes, HTTPRequestMethods, \
-  HTTPRequestMethods_by_name, Message, Response
 from util.infrastructure.http_path import \
   get_and_validate_rel_path, \
   default_interface_dir, \
@@ -74,11 +76,11 @@ def get_request_body(environment:dict):
   
   return environment['wsgi.input'].read(request_body_size)
 
+_not_found_text = '<not found>'
 def get_contents(environment, headers):
-  not_found_text = '<not found>'
-  remote_addr = environment.get('REMOTE_ADDR', not_found_text)
-  remote_port = environment.get('REMOTE_PORT', not_found_text)
-  user_agent = environment.get('HTTP_USER_AGENT', not_found_text)
+  remote_addr = environment.get('REMOTE_ADDR', _not_found_text)
+  remote_port = environment.get('REMOTE_PORT', _not_found_text)
+  user_agent = environment.get('HTTP_USER_AGENT', _not_found_text)
   
   printable_request_info = 'remote address / port: %s:%s\n' \
                            'user agent: %s\n' \
@@ -185,7 +187,8 @@ def get_contents(environment, headers):
   return response
 
 def preprocess_request(environment:dict, body:str):
-  environment['root_path_node'] = path_tries['interface']
+  environment[EnvironmentKeys.ROOT_PATH_NODE] = path_tries['interface']
+  
   return environment
 
 def application(environment, start_response):

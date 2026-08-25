@@ -23,17 +23,21 @@ this layer receives models from the interface, handles the heavy lifting for man
 this layer handles serializing models to storage and deserializing them from storage.  storage most often takes the form of a MySQL database, but can also take the form of files on a filesystem.
 
 # building the container
-i've had success building this with a simple command, but you may want to add/use more options, as appropriate for your service:
+i've had success building this with a simple command, but you may want to add/use more options, as appropriate for your service.  in particular, tagging your image is probably a good idea.
 ```bash
-cd /path/to/this/repo/dockered_lamp/api
+cd /path/to/this/repo/dockered_lamp/
 docker build .
 ```
 
 # running the container
 like with building the container, i've kept things as simple as possible, but you may not want to. i grabbed the image id from the output of the `docker build` command above; best practices involve tagging your images with `docker build`'s `-t` option.
 ```bash
-docker run -it -p 8080:8080 $image_id
+docker run -it -p $exposed_port:8080 $image_id
 ```
+you can have the service run on a different port from 8080 inside the docker container by editing line 22 of /api/run.sh or by running on HTTPS, as outlined below.
+
+## running on HTTPS
+lines 23, 24 and 24 of /api/run.sh are meant to replace line 22. (you can run on both HTTP and HTTPS simultaneously, but it's better practice to have your host redirect HTTP to HTTPS.)  line 23 of /api/run.sh has the service run on port 8443 internally, but you can change that.  in any case, you'll want the second port in the -p option of the `docker run` command to match the internal port.  you'll also want to add a `-v` option that maps the path to the HTTPS certs on the host box to the paths in `$SSL_CERTIFICATE_FILE` and `$SSL_CERTIFICATE_KEY_FILE`.
 
 ## notes
 the `-it` option in the run command will pipe the api's stdout to the stdout of whatever terminal you run that command from. if you do that, you can disconnect from the container by sending a SIGTERM with ctrl+c; alternatively, you can replace `-it` with `-d`, which will run the container disconnected.
